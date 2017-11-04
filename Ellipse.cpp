@@ -383,15 +383,28 @@ void MidPoint_Ellipse::verticalEllipse()
 
 bool MidPoint_Ellipse::selectObject(pair<int, int> clickedCoords)
 {
-	list< pair<int, int> >::iterator it;
-	for(it = Coords.begin(); it != Coords.end(); it++)
+	int result;
+	int tempX, tempY;
+	tempX = clickedCoords.first - centerX;
+	tempY = clickedCoords.second - centerY;
+	result = (radiusY * radiusY * tempX * tempX) + (radiusX * radiusX * tempY * tempY) - (radiusX * radiusX * radiusY * radiusY);
+//	result = (clickedCoords.first * clickedCoords.first) + (clickedCoords.second * clickedCoords.second) - (radius * radius);
+	
+	if(result <= 0)
 	{
-		if((*it).first == clickedCoords.first && (*it).second == clickedCoords.second)
-		{
-			redrawSelectedObject(Color::RED, thickness);
-			return true;
-		}
+		redrawSelectedObject(Color::RED, thickness);
+		return true;
 	}
+	
+//	list< pair<int, int> >::iterator it;
+//	for(it = Coords.begin(); it != Coords.end(); it++)
+//	{
+//		if((*it).first == clickedCoords.first && (*it).second == clickedCoords.second)
+//		{
+//			redrawSelectedObject(Color::RED, thickness);
+//			return true;
+//		}
+//	}
 	return false;
 }
 

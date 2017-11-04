@@ -10,7 +10,7 @@ using namespace std;
 class MidPoint_Circle : public Object
 {
 	public:
-		int centerX, centerY, radius;
+		int centerX, centerY, clickedRadiusX, clickedRadiusY, radius;
 		MidPoint_Circle(unsigned char* color, int thickness, string pattern);
 		void printCoords();
 		void draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2);

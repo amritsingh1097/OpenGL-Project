@@ -106,6 +106,7 @@ void redraw()
 				glutSetWindowTitle("Fill Object");
 				cout << "Object Color: R: " << (int)Color::RED[0] << "\tG: " << (int)Color::RED[1] << "\tB: " << (int)Color::RED[2] << endl;
 				cout << "Fill Color: R: " << (int)Color::PURPLE[0] << "\tG: " << (int)Color::PURPLE[1] << "\tB: " << (int)Color::PURPLE[2] << endl;
+				cout << "X: " << seed.first << "\tY: " << seed.second << endl;
 				selectedObject->fillBoundary(seed.first, seed.second, Color::PURPLE, Color::RED);	
 				glFlush();
 //				selectedObject->fillBoundary(seed, Color::PURPLE, Color::RED);
@@ -429,7 +430,8 @@ void lineColorSubmenu(int id)
 			break;
 	}
 	selectedObject->setColor(currColor);
-	selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
+	redrawAllObjects();
+//	selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
 }
 
 void lineThicknessSubmenu(int id)
@@ -461,7 +463,8 @@ void lineThicknessSubmenu(int id)
 			break;
 	}
 	selectedObject->setThickness(currThickness);
-	selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
+	redrawAllObjects();
+//	selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
 }
 
 void rotAngleMenu(int id)
