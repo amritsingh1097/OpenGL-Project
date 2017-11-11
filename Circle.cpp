@@ -18,10 +18,12 @@ list< pair<int, int> >::iterator stackIterator;
 
 MidPoint_Circle::MidPoint_Circle(unsigned char* color, int thickness, string pattern)
 {
+	this->shapeID = 7;
 	this->color = color;
 	this->thickness = thickness;
 	this->pattern = pattern;
 	this->patternIndex = 0;
+	this->isFilled = false;
 	this->objectName = (char*)"MidPoint_Circle";
 }
 
@@ -32,6 +34,11 @@ void MidPoint_Circle::printCoords()
 	{
 		cout<<"\n\tCoordinates: ("<<(*it).first<<","<<(*it).second<<")"<<endl;
 	}
+}
+
+int MidPoint_Circle::getShapeID()
+{
+	return shapeID;
 }
 
 void MidPoint_Circle::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
@@ -209,13 +216,25 @@ void MidPoint_Circle::translate(int dx, int dy)
 	erasePreviousObject();
 	Axis::drawAxis();
 	
+	centerX += dx;
+	centerY += dy;
+	clickedRadiusX += dx;
+	clickedRadiusY += dy;
+	
 	for(list< pair<int, int> >::iterator it = Coords.begin(); it != Coords.end(); it++)
 	{
 		(*it).first += dx;
 		(*it).second += dy;
 	}
 	
-	redrawAllObjects();
+	if(isFilled)
+	{
+		for(list< pair<int, int> >::iterator it = filledCoords.begin(); it != filledCoords.end(); it++)
+		{
+			(*it).first += dx;
+			(*it).second += dy;
+		}
+	}
 	
 //	for(list<Object*>::iterator it = objectList.begin(); it != objectList.end(); it++)
 //	{
@@ -224,6 +243,8 @@ void MidPoint_Circle::translate(int dx, int dy)
 	
 	selectedCoords.first += dx;
 	selectedCoords.second += dy;
+	
+	redrawAllObjects();
 }
 
 void MidPoint_Circle::rotate(int rotAngleDeg, pair<int, int> pivot)
@@ -231,7 +252,7 @@ void MidPoint_Circle::rotate(int rotAngleDeg, pair<int, int> pivot)
 	erasePreviousObject();
 	Axis::drawAxis();
 	
-	const float PI = 3.141;
+	const float PI = 3.14159;
 	float sinTheeta;
 	float cosTheeta;
 	float rotAngleRad = (float)rotAngleDeg * (PI / (float)180);
@@ -256,7 +277,27 @@ void MidPoint_Circle::rotate(int rotAngleDeg, pair<int, int> pivot)
 	clickedRadiusX = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
 	clickedRadiusY = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
 	
-//	draw(centerX, centerY, clickedRadiusX, clickedRadiusY);
+	if(isFilled)
+	{
+		for(list< pair<int, int> >::iterator it = filledCoords.begin(); it != filledCoords.end(); it++)
+		{
+			tempX = (*it).first;
+			tempY = (*it).second;
+			(*it).first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
+			(*it).second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
+		}
+	}
+	
+	Coords.clear();
+//	draw(centerX, centerY, 0, radius);
+	draw(centerX, centerY, clickedRadiusX, clickedRadiusY);
+	
+	tempX = selectedCoords.first;
+	tempY = selectedCoords.second;
+	selectedCoords.first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
+	selectedCoords.second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
+	
+	redrawAllObjects();
 	
 //	sinTheeta = sinTheeta * 100;
 //	cosTheeta = cosTheeta * 100;
@@ -267,59 +308,43 @@ void MidPoint_Circle::rotate(int rotAngleDeg, pair<int, int> pivot)
 //	sinTheeta = (float)tempSin/100;
 //	cosTheeta = (float)tempCos/100;
 	
-	list< pair<int, int> >::iterator it;
-	for(it = Coords.begin(); it != Coords.end(); it++)
-	{
-		tempX = (*it).first;
-		tempY = (*it).second;
+//	list< pair<int, int> >::iterator it;
+//	for(it = Coords.begin(); it != Coords.end(); it++)
+//	{
+//		tempX = (*it).first;
+//		tempY = (*it).second;
 //		(*it).first = round((tempX * cosTheeta) - (tempY * sinTheeta));
 //		(*it).second = round((tempX * sinTheeta) + (tempY * cosTheeta));
 //		cout << "Coord1: " << ((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta);
 //		cout << "\tCoord2: " << ((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta) << endl;
-		(*it).first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
-		(*it).second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
-	}
-	
-	redrawAllObjects();
+//		(*it).first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
+//		(*it).second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
+//	}
 	
 //	for(list<Object*>::iterator it = objectList.begin(); it != objectList.end(); it++)
 //	{
 //		(*it)->redrawSelectedObject((*it)->color, (*it)->thickness);
 //	}
-	
-	tempX = selectedCoords.first;
-	tempY = selectedCoords.second;
-	selectedCoords.first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
-	selectedCoords.second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
 }
 
-void MidPoint_Circle::scale(int scaleX, int scaleY, pair<int, int> pivot)
+void MidPoint_Circle::scale(float scaleFactor, pair<int, int> pivot)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
 	
-	int scaleFactor;
+	centerX = round(((float)centerX * scaleFactor) + ((float)pivot.first - ((float)pivot.first * scaleFactor)));
+	centerY = round(((float)centerY * scaleFactor) + ((float)pivot.second - ((float)pivot.second * scaleFactor)));
 	
-	scaleFactor = sqrt(pow((pivot.first - centerX), 2) + pow((pivot.second - centerY), 2));
-	cout << "Scale Factor: " << scaleFactor << endl;
+	clickedRadiusX = round(((float)clickedRadiusX * scaleFactor) + ((float)pivot.first - ((float)pivot.first * scaleFactor)));
+	clickedRadiusY = round(((float)clickedRadiusY * scaleFactor) + ((float)pivot.second - ((float)pivot.second * scaleFactor)));
 	
-	centerX = (centerX - pivot.first) * scaleFactor;
-	centerY = (centerY - pivot.second) * scaleFactor;
+	Coords.clear();
+	draw(centerX, centerY, clickedRadiusX, clickedRadiusY);
 	
-	radius *= scaleFactor;
-	
-	list< pair<int, int> >::iterator it;
-	for(it = Coords.begin(); it != Coords.end(); it++)
-	{
-		(*it).first *= scaleFactor;
-		(*it).second *= scaleFactor;
-	}
+	selectedCoords.first = round(((float)selectedCoords.first * scaleFactor) + ((float)pivot.first - ((float)pivot.first * scaleFactor)));
+	selectedCoords.second = round(((float)selectedCoords.second * scaleFactor) + ((float)pivot.second - ((float)pivot.second * scaleFactor)));
 	
 	redrawAllObjects();
-	
-	selectedCoords.first *= scaleFactor;
-	selectedCoords.second *= scaleFactor;
-	
 }
 
 void MidPoint_Circle::setPattern(string pattern)
@@ -335,6 +360,11 @@ void MidPoint_Circle::setThickness(int thickness)
 void MidPoint_Circle::setColor(unsigned char *color)
 {
 	this->color = color;
+}
+
+void MidPoint_Circle::setFillColor(unsigned char *fillColor)
+{
+	this->fillColor = fillColor;
 }
 
 void MidPoint_Circle::erasePreviousObject()
@@ -361,107 +391,228 @@ void MidPoint_Circle::redrawSelectedObject(unsigned char* color, int thickness)
 		for(it = Coords.begin(); it != Coords.end(); it++)
 		{
 			patternIndex %= 4;
-			if(pattern[patternIndex] == '1')
+			if(pattern[patternIndex] == '1' && !viewport->isClipped((*it).first, (*it).second))
 			{
 				glVertex2i((*it).first, (*it).second);
 			}
 			patternIndex++;
 		}
+		
 	glEnd();
 	glFlush();
+	
+	if(isFilled)
+	{
+		if(color == this->color)		glColor3ubv(fillColor);
+		else	glColor3ub(color[0] - 2, color[1], color[2]);
+		glBegin(GL_POINTS);
+			cout << "IsFilled: " << isFilled << endl;
+			for(it = filledCoords.begin(); it != filledCoords.end(); it++)
+			{
+				if(!viewport->isClipped((*it).first, (*it).second))
+					glVertex2i((*it).first, (*it).second);
+			}
+		glEnd();
+		glFlush();
+	}
 }
 
-void MidPoint_Circle::fillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+void MidPoint_Circle::fourFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
 {
+//	if(filledCoords.size() > 0)	return;
+//	if(isFilled)	return;
+	
 	unsigned char XYPixelColor[4];
-	pair<int, int> tempCoords;
-	bool flag = false;
 	
 	glReadPixels(x, ScreenSizeY - y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
 	
-	if((int)XYPixelColor[0] == (int)fillColor[0] && (int)XYPixelColor[1] == (int)fillColor[1] && (int)XYPixelColor[2] == (int)fillColor[2])
+	if(!(((int)XYPixelColor[0] == (int)fillColor[0] && (int)XYPixelColor[1] == (int)fillColor[1] && (int)XYPixelColor[2] == (int)fillColor[2])
+	|| ((int)XYPixelColor[0] == (int)Color::VIEWPORT_COLOR[0] && (int)XYPixelColor[1] == (int)Color::VIEWPORT_COLOR[1] && (int)XYPixelColor[2] == (int)Color::VIEWPORT_COLOR[2])
+	|| ((int)XYPixelColor[0] == (int)selectedObjectColor[0] && (int)XYPixelColor[1] == (int)selectedObjectColor[1] && (int)XYPixelColor[2] == (int)selectedObjectColor[2])))
 	{
-		cout << "!!!!!!!!!!!!!!!!!!!!---------COLOR MATCHED---------!!!!!!!!!!!!!!!!!!!!" << endl;
-		return;
+		glColor3ubv(fillColor);
+		glBegin(GL_POINTS);
+			glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
+		glEnd();
+		glFlush();
+
+		isFilled = true;
+		filledCoords.push_back(make_pair(x - ScreenSizeX/2, ScreenSizeY/2 - y));
+		
+		fourFillBoundary(x+1, y, fillColor, selectedObjectColor);	// Right Pixel
+		fourFillBoundary(x-1, y, fillColor, selectedObjectColor);	// Left Pixel
+		glFlush();
+		fourFillBoundary(x, y+1, fillColor, selectedObjectColor);	// Upper Pixel
+		fourFillBoundary(x, y-1, fillColor, selectedObjectColor);	// Lower Pixel
+//		glFlush();
 	}
-	if((int)XYPixelColor[0] == (int)selectedObjectColor[0] && (int)XYPixelColor[1] == (int)selectedObjectColor[1] && (int)XYPixelColor[2] == (int)selectedObjectColor[2])
+
+}
+
+void MidPoint_Circle::eightFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+{
+	unsigned char XYPixelColor[4];
+	
+	glReadPixels(x, ScreenSizeY - y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
+	
+//	if(!(XYPixelColor == fillColor || XYPixelColor == Color::VIEWPORT_COLOR || XYPixelColor == selectedObjectColor))
+	if(!(((int)XYPixelColor[0] == (int)fillColor[0] && (int)XYPixelColor[1] == (int)fillColor[1] && (int)XYPixelColor[2] == (int)fillColor[2])
+	|| ((int)XYPixelColor[0] == (int)Color::VIEWPORT_COLOR[0] && (int)XYPixelColor[1] == (int)Color::VIEWPORT_COLOR[1] && (int)XYPixelColor[2] == (int)Color::VIEWPORT_COLOR[2])
+	|| ((int)XYPixelColor[0] == (int)selectedObjectColor[0] && (int)XYPixelColor[1] == (int)selectedObjectColor[1] && (int)XYPixelColor[2] == (int)selectedObjectColor[2])))
 	{
-		cout << "Boundary Hit..." << endl;
-//		getch();
-		return;
+		glColor3ubv(fillColor);
+		glBegin(GL_POINTS);
+			glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
+		glEnd();
+		glFlush();
+
+		isFilled = true;
+		filledCoords.push_back(make_pair(x - ScreenSizeX/2, ScreenSizeY/2 - y));
+		
+		eightFillBoundary(x+1, y, fillColor, selectedObjectColor);		// Right Pixel
+		eightFillBoundary(x-1, y, fillColor, selectedObjectColor);		// Left Pixel
+		eightFillBoundary(x, y+1, fillColor, selectedObjectColor);		// Upper Pixel
+		eightFillBoundary(x, y-1, fillColor, selectedObjectColor);		// Lower Pixel
+		glFlush();
+		eightFillBoundary(x-1, y+1, fillColor, selectedObjectColor);	// Upper Left Pixel
+		eightFillBoundary(x+1, y+1, fillColor, selectedObjectColor);	// Upper Right Pixel
+		eightFillBoundary(x+1, y-1, fillColor, selectedObjectColor);	// Lower Right Pixel
+		eightFillBoundary(x-1, y-1, fillColor, selectedObjectColor);	// Lower Left Pixel
+//		glFlush();
 	}
+
+}
+
+void MidPoint_Circle::floodFill(int x, int y, unsigned char* fillColor)
+{
+	unsigned char XYPixelColor[4];
 	
-//	cout << "Read Pixel: R: " << (int)XYPixelColor[0] << "\tG: " << (int)XYPixelColor[1] << "\tB: " << (int)XYPixelColor[2] << endl;
-//	getch();
-	cout << "Coloring Pixel (" << x << ", " << y << ")" << endl;
-	glColor3ubv(fillColor);
-	glBegin(GL_POINTS);
-		glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
-	glEnd();
-	glFlush();
+	glReadPixels(x, ScreenSizeY - y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
 	
-//	cout << "Y: " << y << endl;
-	flag = false;
-	glReadPixels(x, ScreenSizeY - y - 1, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
-	if((int)XYPixelColor[0] != (int)fillColor[0] && (int)XYPixelColor[1] != (int)fillColor[1] && (int)XYPixelColor[2] != (int)fillColor[2])
+//	cout << "Flood Fill..." << endl;
+	
+//	cout << "Point RED: " << (int)XYPixelColor[0] << "\tGREEN: " << (int)XYPixelColor[1] << "\tBLUE: " << (int)XYPixelColor[2] << endl;
+//	cout << "Background RED: " << (int)Color::BACKGROUND_COLOR[0] << "\tGREEN: " << (int)Color::BACKGROUND_COLOR[1] << "\tBLUE: " << (int)Color::BACKGROUND_COLOR[2] << endl;
+	
+	if(((int)XYPixelColor[0] == (int)Color::BACKGROUND_COLOR[0] && (int)XYPixelColor[1] == (int)Color::BACKGROUND_COLOR[1] && (int)XYPixelColor[2] == (int)Color::BACKGROUND_COLOR[2])
+	|| ((int)XYPixelColor[0] == (int)Color::AXIS_COLOR[0] && (int)XYPixelColor[1] == (int)Color::AXIS_COLOR[1] && (int)XYPixelColor[2] == (int)Color::AXIS_COLOR[2])
+	|| ((int)XYPixelColor[0] == (int)Color::GRAY[0] && (int)XYPixelColor[1] == (int)Color::GRAY[1] && (int)XYPixelColor[2] == (int)Color::GRAY[2]))
 	{
-//		for(stackIterator = customStack.begin(); stackIterator != customStack.end(); stackIterator++)
-//		{
-////			cout << "StackIterator: " << &(*stackIterator) << "\t*StackIterator: " << (*stackIterator) << endl;
-//			if((*stackIterator) == y-1)
-//			{
-//				flag = true;
-//				break;
-//			}
-//		}
-//		if(!flag)
-//		{
-			tempCoords.first = x;
-			tempCoords.second = y-1;
-			customStack.push_back(tempCoords);
-			cout << "Pushed (" << x << ", " << y-1 << ")" << endl << endl;
-//		}
+		glColor3ubv(fillColor);
+		glBegin(GL_POINTS);
+			glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
+		glEnd();
+		glFlush();
+
+		filledCoords.push_back(make_pair(x - ScreenSizeX/2, ScreenSizeY/2 - y));
+		
+		floodFill(x+1, y, fillColor);	// Right Pixel
+		floodFill(x-1, y, fillColor);	// Left Pixel
+		glFlush();
+		floodFill(x, y+1, fillColor);	// Upper Pixel
+		floodFill(x, y-1, fillColor);	// Lower Pixel
+//		glFlush();
 	}
-	
-	flag = false;
-	glReadPixels(x, ScreenSizeY - y + 1, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
-	if((int)XYPixelColor[0] != (int)fillColor[0] && (int)XYPixelColor[1] != (int)fillColor[1] && (int)XYPixelColor[2] != (int)fillColor[2])
-	{
-//		for(stackIterator = customStack.begin(); stackIterator != customStack.end(); stackIterator++)
-//		{
-////			cout << "StackIterator: " << stackIterator << "*StackIterator: " << (*stackIterator) << endl;
-//			if((*stackIterator) == y+1)
-//			{
-//				flag = true;
-//				break;
-//			}
-//		}
-//		if(!flag)
-//		{
-			tempCoords.first = x;
-			tempCoords.second = y+1;
-			customStack.push_back(tempCoords);
-			cout << "Pushed (" << x << ", " << y+1 << ")" << endl << endl;
-//		}
-	}
-	
-	fillBoundary(x+1, y, fillColor, selectedObjectColor);
-//	cout << "Call 1 ended..." << endl;
-	fillBoundary(x-1, y, fillColor, selectedObjectColor);
-//	cout << "Call 2 ended..." << endl;
+
+}
+
+//void MidPoint_Circle::fillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+//{
+//	unsigned char XYPixelColor[4];
+//	pair<int, int> tempCoords;
+//	bool flag = false;
+//	
+//	glReadPixels(x, ScreenSizeY - y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
+//	
+//	if((int)XYPixelColor[0] == (int)fillColor[0] && (int)XYPixelColor[1] == (int)fillColor[1] && (int)XYPixelColor[2] == (int)fillColor[2])
+//	{
+////		cout << "!!!!!!!!!!!!!!!!!!!!---------COLOR MATCHED---------!!!!!!!!!!!!!!!!!!!!" << endl;
+//		return;
+//	}
+////	if((int)XYPixelColor[0] == (int)Color::VIEWPORT_COLOR[0] && (int)XYPixelColor[1] == (int)Color::VIEWPORT_COLOR[1] && (int)XYPixelColor[2] == (int)Color::VIEWPORT_COLOR[2])
+////	{
+////		cout << "Viewport Hit..." << endl;
+////		return;
+////	}
+//	if((int)XYPixelColor[0] == (int)selectedObjectColor[0] && (int)XYPixelColor[1] == (int)selectedObjectColor[1] && (int)XYPixelColor[2] == (int)selectedObjectColor[2])
+//	{
+////		cout << "Boundary Hit..." << endl;
+////		getch();
+//		return;
+//	}
+//	
+////	cout << "Read Pixel: R: " << (int)XYPixelColor[0] << "\tG: " << (int)XYPixelColor[1] << "\tB: " << (int)XYPixelColor[2] << endl;
+////	getch();
+////	cout << "Coloring Pixel (" << x << ", " << y << ")" << endl;
+//	glColor3ubv(fillColor);
+//	glBegin(GL_POINTS);
+//		glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
+//	glEnd();
+////	glFlush();
+//	
+////	cout << "Y: " << y << endl;
+////	flag = false;
+////	glReadPixels(x, ScreenSizeY - y - 1, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
+////	if((int)XYPixelColor[0] != (int)fillColor[0] && (int)XYPixelColor[1] != (int)fillColor[1] && (int)XYPixelColor[2] != (int)fillColor[2])
+////	{
+//////		for(stackIterator = customStack.begin(); stackIterator != customStack.end(); stackIterator++)
+//////		{
+////////			cout << "StackIterator: " << &(*stackIterator) << "\t*StackIterator: " << (*stackIterator) << endl;
+//////			if((*stackIterator) == y-1)
+//////			{
+//////				flag = true;
+//////				break;
+//////			}
+//////		}
+//////		if(!flag)
+//////		{
+////			tempCoords.first = x;
+////			tempCoords.second = y-1;
+////			customStack.push_back(tempCoords);
+////			cout << "Pushed (" << x << ", " << y-1 << ")" << endl << endl;
+//////		}
+////	}
+////	
+////	flag = false;
+////	glReadPixels(x, ScreenSizeY - y + 1, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
+////	if((int)XYPixelColor[0] != (int)fillColor[0] && (int)XYPixelColor[1] != (int)fillColor[1] && (int)XYPixelColor[2] != (int)fillColor[2])
+////	{
+//////		for(stackIterator = customStack.begin(); stackIterator != customStack.end(); stackIterator++)
+//////		{
+////////			cout << "StackIterator: " << stackIterator << "*StackIterator: " << (*stackIterator) << endl;
+//////			if((*stackIterator) == y+1)
+//////			{
+//////				flag = true;
+//////				break;
+//////			}
+//////		}
+//////		if(!flag)
+//////		{
+////			tempCoords.first = x;
+////			tempCoords.second = y+1;
+////			customStack.push_back(tempCoords);
+////			cout << "Pushed (" << x << ", " << y+1 << ")" << endl << endl;
+//////		}
+////	}
+//	
+//	fillBoundary(x+1, y, fillColor, selectedObjectColor);
+////	cout << "Call 1 ended..." << endl;
+//	fillBoundary(x-1, y, fillColor, selectedObjectColor);
+//	glFlush();
+////	cout << "Call 2 ended..." << endl;
 //	fillBoundary(x, y+1, fillColor, selectedObjectColor);
 //	fillBoundary(x, y-1, fillColor, selectedObjectColor);
-
-//	cout << "Stack Front: " << customStack.front() << endl;
-	x = customStack.back().first;
-	y = customStack.back().second;
-	customStack.pop_back();
-//	cout << "Popped" << endl;
-	cout << "Popped (" << x << ", " << y << ")" << endl;
-	fillBoundary(x, y, fillColor, selectedObjectColor);
-	
-//	glFlush();
-}
+//
+////	cout << "Stack Front: " << customStack.front() << endl;
+////	x = customStack.back().first;
+////	y = customStack.back().second;
+////	customStack.pop_back();
+//////	cout << "Popped" << endl;
+////	cout << "Popped (" << x << ", " << y << ")" << endl;
+////	fillBoundary(x, y, fillColor, selectedObjectColor);
+//	
+////	glFlush();
+//}
 
 //void MidPoint_Circle::fillBoundary(pair<int, int> seed, unsigned char* fillColor, unsigned char* selectedObjectColor)
 //{

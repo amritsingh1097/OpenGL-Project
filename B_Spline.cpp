@@ -1,5 +1,5 @@
 #include <math.h>
-#include "symmetricdda.h"
+#include "b_spline.h"
 #include "color.h"
 #include "axis.h"
 #include "thickness.h"
@@ -12,114 +12,66 @@ extern pair<int, int> selectedCoords;
 
 extern void redrawAllObjects();
 
-SymmetricDDA::SymmetricDDA(unsigned char* color, int thickness, string pattern)
+B_Spline::B_Spline(unsigned char* color, int thickness, string pattern)
 {
-	this->shapeID = 1;
+	this->shapeID = 6;
 	this->color = color;
 	this->thickness = thickness;
 	this->pattern = pattern;
 	this->patternIndex = 0;
-	this->objectName = (char*)"Symmetric DDA Line";
+	this->isDrawn = false;
+	this->objectName = (char*)"B_Spline Curve";
 }
 
-void SymmetricDDA::printCoords()
+void B_Spline::printCoords()
 {
-	list< pair<int, int> >::iterator it;
-	
-	for(it = Coords.begin(); it != Coords.end(); it++)
+	list< pair<int,int> >::iterator it;
+	for(it = Coords.begin(); it != Coords.end();it++)
 	{
-		cout << "Coordinates: (" << (*it).first << ", " << (*it).second << ")" << endl;
+		cout<<"\n\tCoordinates: ("<<(*it).first<<","<<(*it).second<<")"<<endl;
 	}
-	
 }
 
-int SymmetricDDA::getShapeID()
+int B_Spline::getShapeID()
 {
 	return shapeID;
 }
 
-void SymmetricDDA::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
+void B_Spline::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
 {
 	pair<int, int> currCoords;
-	float x, y;
-	float dx, dy, xIncr, yIncr;
-	int LLE, max, power;
+	int x, y;
+	int C_Coefficient, blendingFunc;
 	
 	startCoords.first = XCoord1;
 	startCoords.second = YCoord1;
 	endCoords.first = XCoord2;
 	endCoords.second = YCoord2;
-
-	x = XCoord1 + 0.5;
-	y = YCoord1 + 0.5;
-	dx = XCoord2 - XCoord1;
-	dy = YCoord2 - YCoord1;
-//	max = maximum(fabs(dx), fabs(dy));
-	max = fabs(dx) > fabs(dy) ? fabs(dx) : fabs(dy);
-
-	cout << "X: " << x << "\t";
-	cout << "Y: " << y << endl << endl;
-
-	for (int i = 0; i < max; i++)
-	{
-		if (max >= pow(2, i-1) && max < pow(2, i))
-		{
-			power = i;
-		}
-	}
 	
-	LLE = pow(2, power);
-
-	cout << "LLE: " << LLE << endl << endl;
-
-	xIncr = float(dx) / float(LLE);
-	yIncr = float(dy) / float(LLE);
-
-	cout << "X Incr: " << xIncr << "\t";
-	cout << "Y Incr: " << yIncr << endl << endl;
-
+//	x = XCoord1;
+//	y = YCoord1;
+//	dx = fabs(XCoord2 - XCoord1);
+//	dy = fabs(YCoord2 - YCoord1);
+	
+	
+	
 	glColor3ubv(Color::BLACK);
 	glBegin(GL_POINTS);
-	glVertex2i(round(x), round(y));
-
-	currCoords.first = round(x);
-	currCoords.second = round(y);
+	glVertex2i(x, y);
+	
+	currCoords.first = x;
+	currCoords.second = y;
 	Coords.push_back(currCoords);
-
-	for (int i=0; i<LLE; i++)
-	{
-		x += xIncr;
-		y += yIncr;
-		
-		currCoords.first = round(x);
-		currCoords.second = round(y);
-		Coords.push_back(currCoords);
-		
-		patternIndex = patternIndex % 4;
-		
-		if(pattern[patternIndex] == '1')
-		{
-			glVertex2i(round(x), round(y));
-//			cout << "(X,Y): (" << round(x) << "," << round(y) << ")" << endl;
-			
-//			erasePreviousLine(round(x), round(y));
-//			drawNewLine(round(x), round(y), LineColor.Red, LineColor.Green, LineColor.Blue);
-		}
-//		else
-//		{
-//			erasePreviousLine(round(x), round(y));
-//			drawNewLine(round(x), round(y), BackgroundColor.Red, BackgroundColor.Green, BackgroundColor.Blue);
-//		}
-		
-		patternIndex++;
-	}
+	
+	
 	
 	glEnd();
 	glFlush();
-//	LastThickness = LineThickness;
+	
+//	if(viewport->ViewportPresent)	redrawAllObjects();
 }
 
-bool SymmetricDDA::selectObject(pair<int, int> clickedCoords)
+bool B_Spline::selectObject(pair<int, int> clickedCoords)
 {
 	list< pair<int, int> >::iterator it;
 	for(it = Coords.begin(); it != Coords.end(); it++)
@@ -133,7 +85,7 @@ bool SymmetricDDA::selectObject(pair<int, int> clickedCoords)
 	return false;
 }
 
-void SymmetricDDA::translate(int dx, int dy)
+void B_Spline::translate(int dx, int dy)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
@@ -149,18 +101,13 @@ void SymmetricDDA::translate(int dx, int dy)
 		(*it).second += dy;
 	}
 	
-//	for(list<Object*>::iterator it = objectList.begin(); it != objectList.end(); it++)
-//	{
-//		(*it)->redrawSelectedObject((*it)->color, (*it)->thickness);
-//	}
-	
 	selectedCoords.first += dx;
 	selectedCoords.second += dy;
 	
 	redrawAllObjects();
 }
 
-void SymmetricDDA::rotate(int rotAngleDeg, pair<int, int> pivot)
+void B_Spline::rotate(int rotAngleDeg, pair<int, int> pivot)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
@@ -199,7 +146,7 @@ void SymmetricDDA::rotate(int rotAngleDeg, pair<int, int> pivot)
 	redrawAllObjects();
 }
 
-void SymmetricDDA::scale(float scaleFactor, pair<int, int> pivot)
+void B_Spline::scale(float scaleFactor, pair<int, int> pivot)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
@@ -226,26 +173,40 @@ void SymmetricDDA::scale(float scaleFactor, pair<int, int> pivot)
 	redrawAllObjects();
 }
 
-void SymmetricDDA::setPattern(string pattern)
+void B_Spline::setPattern(string pattern)
 {
 	this->pattern = pattern;
 }
 
-void SymmetricDDA::setThickness(int thickness)
+void B_Spline::setThickness(int thickness)
 {
 	this->thickness = thickness;
 }
 
-void SymmetricDDA::setColor(unsigned char *color)
+void B_Spline::setColor(unsigned char *color)
 {
 	this->color = color;
 }
 
-void SymmetricDDA::erasePreviousObject()
+void B_Spline::erasePreviousObject()
 {
 	list< pair<int, int> >::iterator it;
-	
 	glColor3ubv(Color::BACKGROUND_COLOR);
+	
+	glPointSize(3);
+	glBegin(GL_POINTS);
+	
+	it = Coords.begin();
+	
+		glVertex2i((*it).first, (*it).second);
+	
+	it = Coords.end();
+	it--;
+	
+		glVertex2i((*it).first, (*it).second);
+	glEnd();
+	glPointSize(1);
+	
 	glBegin(GL_POINTS);
 	for(it = Coords.begin(); it != Coords.end(); it++)
 	{
@@ -255,7 +216,7 @@ void SymmetricDDA::erasePreviousObject()
 	glFlush();
 }
 
-void SymmetricDDA::redrawSelectedObject(unsigned char* color, int thickness)
+void B_Spline::redrawSelectedObject(unsigned char* color, int thickness)
 {
 	glColor3ubv(color);
 	glPointSize(thickness);
@@ -268,14 +229,14 @@ void SymmetricDDA::redrawSelectedObject(unsigned char* color, int thickness)
 	start = startCoords;
 	end = endCoords;
 	
-	cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
+//	cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
 	if(viewport->ViewportPresent)
 	{
 		clipped = viewport->clipLine(&start, &end);
 //		cout << "Fully Clipped: " << !clipped << endl;
 		if(!clipped)	return;
 	
-		cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
+//		cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
 		while(true)
 		{
 			if((*it).first == start.first && (*it).second == start.second)	break;
@@ -306,7 +267,7 @@ void SymmetricDDA::redrawSelectedObject(unsigned char* color, int thickness)
 	glFlush();
 }
 
-void SymmetricDDA::fourFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+void B_Spline::fourFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
 {
 	unsigned char XYPixelColor[4];
 	
@@ -335,7 +296,7 @@ void SymmetricDDA::fourFillBoundary(int x, int y, unsigned char* fillColor, unsi
 
 }
 
-void SymmetricDDA::eightFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+void B_Spline::eightFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
 {
 	unsigned char XYPixelColor[4];
 	
@@ -370,7 +331,7 @@ void SymmetricDDA::eightFillBoundary(int x, int y, unsigned char* fillColor, uns
 
 }
 
-void SymmetricDDA::floodFill(int x, int y, unsigned char* fillColor)
+void B_Spline::floodFill(int x, int y, unsigned char* fillColor)
 {
 	unsigned char XYPixelColor[4];
 	

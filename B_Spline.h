@@ -1,22 +1,22 @@
-#ifndef MID_POINT_H
-#define MID_POINT_H
+#ifndef B_SPLINE_H
+#define B_SPLINE_H
 
 #include "object.h"
 #include <bits/stdc++.h>
 #include <gl/glut.h>
 using namespace std;
 
-class Mid_PointLDA : public Object
+class B_Spline : public Object
 {
 	int shapeID;
 	public:
 		pair<int, int> startCoords, endCoords;
-		Mid_PointLDA(unsigned char* color, int thickness, string pattern);
+		list< pair<int, int> > controlPoints;
+		bool isDrawn;
+		B_Spline(unsigned char* color, int thickness, string pattern);
 		void printCoords();
 		int getShapeID();
 		void draw(int X1, int Y1, int X2, int Y2);
-		void slopeLT1(int X1, int Y1, int X2, int Y2, int steps, int x, int y, int dx, int dy);
-		void slopeGT1(int X1, int Y1, int X2, int Y2, int steps, int x, int y, int dx, int dy);
 		void translate(int dx, int dy);
 		void rotate(int rotAngle, pair<int, int> pivot);
 		void scale(float scaleFactor, pair<int, int> pivot);
@@ -32,3 +32,4 @@ class Mid_PointLDA : public Object
 };
 
 #endif
+

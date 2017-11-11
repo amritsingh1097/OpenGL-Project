@@ -8,15 +8,18 @@
 extern list<Object*> objectList;
 extern Viewport *viewport;
 extern pair<int, int> selectedCoords;
+extern int ScreenSizeX, ScreenSizeY;
 
 extern void redrawAllObjects();
 
 MidPoint_Ellipse::MidPoint_Ellipse(unsigned char* color, int thickness, string pattern)
 {
+	this->shapeID = 8;
 	this->color = color;
 	this->thickness = thickness;
 	this->pattern = pattern;
 	this->patternIndex = 0;
+	this->isFilled = false;
 	this->objectName = (char*)"MidPoint_Ellipse";
 }
 
@@ -27,6 +30,11 @@ void MidPoint_Ellipse::printCoords()
 	{
 		cout<<"\n\tCoordinates: ("<<(*it).first<<","<<(*it).second<<")"<<endl;
 	}
+}
+
+int MidPoint_Ellipse::getShapeID()
+{
+	return shapeID;
 }
 
 void MidPoint_Ellipse::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
@@ -412,13 +420,17 @@ void MidPoint_Ellipse::translate(int dx, int dy)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
+	
+	centerX += dx;
+	centerY += dy;
+	radiusX += dx;
+	radiusY += dy;
+	
 	for(list< pair<int, int> >::iterator it = Coords.begin(); it != Coords.end(); it++)
 	{
 		(*it).first += dx;
 		(*it).second += dy;
 	}
-	
-	redrawAllObjects();
 	
 //	for(list<Object*>::iterator it = objectList.begin(); it != objectList.end(); it++)
 //	{
@@ -427,6 +439,8 @@ void MidPoint_Ellipse::translate(int dx, int dy)
 	
 	selectedCoords.first += dx;
 	selectedCoords.second += dy;
+	
+	redrawAllObjects();
 }
 
 void MidPoint_Ellipse::rotate(int rotAngleDeg, pair<int, int> pivot)
@@ -447,6 +461,16 @@ void MidPoint_Ellipse::rotate(int rotAngleDeg, pair<int, int> pivot)
 	sinTheeta = sin(rotAngleRad);
 	cosTheeta = cos(rotAngleRad);
 	
+	tempX = centerX;
+	tempY = centerY;
+	centerX = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
+	centerY = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
+	
+	tempX = radiusX;
+	tempY = radiusY;
+	radiusX = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
+	radiusY = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
+	
 	list< pair<int, int> >::iterator it;
 	for(it = Coords.begin(); it != Coords.end(); it++)
 	{
@@ -455,8 +479,6 @@ void MidPoint_Ellipse::rotate(int rotAngleDeg, pair<int, int> pivot)
 		(*it).first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
 		(*it).second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
 	}
-	
-	redrawAllObjects();
 	
 //	for(list<Object*>::iterator it = objectList.begin(); it != objectList.end(); it++)
 //	{
@@ -467,12 +489,28 @@ void MidPoint_Ellipse::rotate(int rotAngleDeg, pair<int, int> pivot)
 	tempY = selectedCoords.second;
 	selectedCoords.first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
 	selectedCoords.second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
+	
+	redrawAllObjects();
 }
 
-void MidPoint_Ellipse::scale(int scaleX, int scaleY, pair<int, int> pivot)
+void MidPoint_Ellipse::scale(float scaleFactor, pair<int, int> pivot)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
+	
+	centerX = round(((float)centerX * scaleFactor) + ((float)pivot.first - ((float)pivot.first * scaleFactor)));
+	centerY = round(((float)centerY * scaleFactor) + ((float)pivot.second - ((float)pivot.second * scaleFactor)));
+	
+	radiusX = round(((float)radiusX * scaleFactor) + ((float)pivot.first - ((float)pivot.first * scaleFactor)));
+	radiusY = round(((float)radiusY * scaleFactor) + ((float)pivot.second - ((float)pivot.second * scaleFactor)));
+	
+	Coords.clear();
+	draw(centerX, centerY, radiusX, radiusY);
+	
+	selectedCoords.first = round(((float)selectedCoords.first * scaleFactor) + ((float)pivot.first - ((float)pivot.first * scaleFactor)));
+	selectedCoords.second = round(((float)selectedCoords.second * scaleFactor) + ((float)pivot.second - ((float)pivot.second * scaleFactor)));
+	
+	redrawAllObjects();
 }
 
 void MidPoint_Ellipse::setPattern(string pattern)
@@ -488,6 +526,11 @@ void MidPoint_Ellipse::setThickness(int thickness)
 void MidPoint_Ellipse::setColor(unsigned char *color)
 {
 	this->color = color;
+}
+
+void MidPoint_Ellipse::setFillColor(unsigned char *fillColor)
+{
+	this->fillColor = fillColor;
 }
 
 void MidPoint_Ellipse::erasePreviousObject()
@@ -525,7 +568,7 @@ void MidPoint_Ellipse::redrawSelectedObject(unsigned char* color, int thickness)
 		for(it = Coords.begin(); it != Coords.end(); it++)
 		{
 			patternIndex %= 4;
-			if(pattern[patternIndex] == '1')
+			if(pattern[patternIndex] == '1' && !viewport->isClipped((*it).first, (*it).second))
 			{
 				glVertex2i((*it).first, (*it).second);
 			}
@@ -533,13 +576,109 @@ void MidPoint_Ellipse::redrawSelectedObject(unsigned char* color, int thickness)
 		}
 	glEnd();
 	glFlush();
+	
+	if(isFilled)
+	{
+		if(color == this->color)		glColor3ubv(fillColor);
+		else	glColor3ub(color[0] - 2, color[1], color[2]);
+		glBegin(GL_POINTS);
+			cout << "IsFilled: " << isFilled << endl;
+			for(it = filledCoords.begin(); it != filledCoords.end(); it++)
+			{
+				if(!viewport->isClipped((*it).first, (*it).second))
+					glVertex2i((*it).first, (*it).second);
+			}
+		glEnd();
+		glFlush();
+	}
 }
 
-void MidPoint_Ellipse::fillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+void MidPoint_Ellipse::fourFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
 //void MidPoint_Ellipse::fillBoundary(pair<int, int> seed, unsigned char* fillColor, unsigned char* selectedObjectColor)
 {
-//	for()
-//	{
-//		
-//	}
+	unsigned char XYPixelColor[4];
+	
+	glReadPixels(x, ScreenSizeY - y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
+	
+	if(!(((int)XYPixelColor[0] == (int)fillColor[0] && (int)XYPixelColor[1] == (int)fillColor[1] && (int)XYPixelColor[2] == (int)fillColor[2])
+	|| ((int)XYPixelColor[0] == (int)Color::VIEWPORT_COLOR[0] && (int)XYPixelColor[1] == (int)Color::VIEWPORT_COLOR[1] && (int)XYPixelColor[2] == (int)Color::VIEWPORT_COLOR[2])
+	|| ((int)XYPixelColor[0] == (int)selectedObjectColor[0] && (int)XYPixelColor[1] == (int)selectedObjectColor[1] && (int)XYPixelColor[2] == (int)selectedObjectColor[2])))
+	{
+		glColor3ubv(fillColor);
+		glBegin(GL_POINTS);
+			glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
+		glEnd();
+//		glFlush();
+
+		isFilled = true;
+		filledCoords.push_back(make_pair(x - ScreenSizeX/2, ScreenSizeY/2 - y));
+		
+		fourFillBoundary(x+1, y, fillColor, selectedObjectColor);
+		fourFillBoundary(x-1, y, fillColor, selectedObjectColor);
+		glFlush();
+		fourFillBoundary(x, y+1, fillColor, selectedObjectColor);
+		fourFillBoundary(x, y-1, fillColor, selectedObjectColor);
+//		glFlush();
+	}
+}
+
+void MidPoint_Ellipse::eightFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+{
+	unsigned char XYPixelColor[4];
+	
+	glReadPixels(x, ScreenSizeY - y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
+	
+	if(!(((int)XYPixelColor[0] == (int)fillColor[0] && (int)XYPixelColor[1] == (int)fillColor[1] && (int)XYPixelColor[2] == (int)fillColor[2])
+	|| ((int)XYPixelColor[0] == (int)Color::VIEWPORT_COLOR[0] && (int)XYPixelColor[1] == (int)Color::VIEWPORT_COLOR[1] && (int)XYPixelColor[2] == (int)Color::VIEWPORT_COLOR[2])
+	|| ((int)XYPixelColor[0] == (int)selectedObjectColor[0] && (int)XYPixelColor[1] == (int)selectedObjectColor[1] && (int)XYPixelColor[2] == (int)selectedObjectColor[2])))
+	{
+		glColor3ubv(fillColor);
+		glBegin(GL_POINTS);
+			glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
+		glEnd();
+		glFlush();
+
+		isFilled = true;
+		filledCoords.push_back(make_pair(x - ScreenSizeX/2, ScreenSizeY/2 - y));
+		
+		eightFillBoundary(x+1, y, fillColor, selectedObjectColor);
+		eightFillBoundary(x-1, y, fillColor, selectedObjectColor);
+		glFlush();
+		eightFillBoundary(x, y+1, fillColor, selectedObjectColor);
+		eightFillBoundary(x, y-1, fillColor, selectedObjectColor);
+
+		eightFillBoundary(x-1, y+1, fillColor, selectedObjectColor);
+		eightFillBoundary(x+1, y+1, fillColor, selectedObjectColor);
+		eightFillBoundary(x+1, y-1, fillColor, selectedObjectColor);
+		eightFillBoundary(x-1, y-1, fillColor, selectedObjectColor);
+//		glFlush();
+	}
+
+}
+
+void MidPoint_Ellipse::floodFill(int x, int y, unsigned char* fillColor)
+{
+	unsigned char XYPixelColor[4];
+	
+	glReadPixels(x, ScreenSizeY - y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, XYPixelColor);
+	
+	if(!(((int)XYPixelColor[0] == (int)Color::BACKGROUND_COLOR[0] && (int)XYPixelColor[1] == (int)Color::BACKGROUND_COLOR[1] && (int)XYPixelColor[2] == (int)Color::BACKGROUND_COLOR[2])))
+	{
+		glColor3ubv(fillColor);
+		glBegin(GL_POINTS);
+			glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
+		glEnd();
+//		glFlush();
+
+		isFilled = true;
+		filledCoords.push_back(make_pair(x - ScreenSizeX/2, ScreenSizeY/2 - y));
+		
+		floodFill(x+1, y, fillColor);
+		floodFill(x-1, y, fillColor);
+		glFlush();
+		floodFill(x, y+1, fillColor);
+		floodFill(x, y-1, fillColor);
+//		glFlush();
+	}
+
 }

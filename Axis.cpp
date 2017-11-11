@@ -6,7 +6,7 @@ extern int ScreenSizeX, ScreenSizeY;
 
 void Axis::drawAxis()
 {
-	glColor3ubv(Color::GREEN);
+	glColor3ubv(Color::AXIS_COLOR);
 	
 	glPointSize(7);
 	glBegin(GL_POINTS);

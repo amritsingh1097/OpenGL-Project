@@ -1,22 +1,30 @@
-#ifndef MID_POINT_H
-#define MID_POINT_H
+#ifndef BEZIER_H
+#define BEZIER_H
 
 #include "object.h"
 #include <bits/stdc++.h>
+#include <conio.h>
 #include <gl/glut.h>
 using namespace std;
 
-class Mid_PointLDA : public Object
+class Bezier : public Object
 {
 	int shapeID;
+	void computeCoeffs();
+	int factorial(int num);
+	void computeCurveCoords(float u);
 	public:
 		pair<int, int> startCoords, endCoords;
-		Mid_PointLDA(unsigned char* color, int thickness, string pattern);
+		list< pair<int, int> > controlCoords;
+		list<float> Coeffs;
+		int numCurveCoords;
+		int numControlPoints;
+		bool isDrawn;
+		Bezier(unsigned char* color, int thickness, string pattern);
 		void printCoords();
 		int getShapeID();
 		void draw(int X1, int Y1, int X2, int Y2);
-		void slopeLT1(int X1, int Y1, int X2, int Y2, int steps, int x, int y, int dx, int dy);
-		void slopeGT1(int X1, int Y1, int X2, int Y2, int steps, int x, int y, int dx, int dy);
+		void addControlCoords(pair<int, int> controlCoord);
 		void translate(int dx, int dy);
 		void rotate(int rotAngle, pair<int, int> pivot);
 		void scale(float scaleFactor, pair<int, int> pivot);

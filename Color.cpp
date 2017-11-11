@@ -12,5 +12,6 @@ unsigned char Color::CYAN[3]				=	{ 0   ,   255  ,   255};
 unsigned char Color::PURPLE[3]				=	{128  ,    0   ,   128};
 unsigned char Color::MAGENTA[3]				=	{255  ,    0   ,   255};
 unsigned char Color::BACKGROUND_COLOR[3]	=	{255  ,    255 ,   255};
-unsigned char Color::VIEWPORT_COLOR[3]		=	{128  ,    128 ,   128};
+unsigned char Color::AXIS_COLOR[3]			=	{ 0   ,    255 ,    0 };
+unsigned char Color::VIEWPORT_COLOR[3]		=	{130  ,    130 ,   130};
 

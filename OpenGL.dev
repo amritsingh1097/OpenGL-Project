@@ -11,7 +11,7 @@ ResourceIncludes=
 MakeIncludes=
 Compiler=
 CppCompiler=
-Linker=-lopengl32_@@_-lglu32_@@_-lglut32_@@_
+Linker=-lopengl32_@@_-lglu32_@@_-lglut32_@@_-Wl,--stack=20971520_@@_
 IsCpp=1
 Icon=
 ExeOutput=
@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=5
 CompilerSettings=0000000100000000100000000
-UnitCount=25
+UnitCount=29
 
 [VersionInfo]
 Major=1
@@ -300,6 +300,43 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
+[Unit28]
+FileName=B_Spline.cpp
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit29]
+FileName=B_Spline.h
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit26]
+FileName=Bezier.cpp
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
 [Unit27]
-FileName=Filling.cpp
+FileName=Bezier.h
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
 

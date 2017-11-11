@@ -1,5 +1,5 @@
 #include <math.h>
-#include "symmetricdda.h"
+#include "bezier.h"
 #include "color.h"
 #include "axis.h"
 #include "thickness.h"
@@ -12,114 +12,181 @@ extern pair<int, int> selectedCoords;
 
 extern void redrawAllObjects();
 
-SymmetricDDA::SymmetricDDA(unsigned char* color, int thickness, string pattern)
+Bezier::Bezier(unsigned char* color, int thickness, string pattern)
 {
-	this->shapeID = 1;
+	this->shapeID = 5;
 	this->color = color;
 	this->thickness = thickness;
 	this->pattern = pattern;
 	this->patternIndex = 0;
-	this->objectName = (char*)"Symmetric DDA Line";
+	this->numControlPoints = 0;
+	this->numCurveCoords = 1000;
+	this->isDrawn = false;
+	this->objectName = (char*)"Bezier Curve";
 }
 
-void SymmetricDDA::printCoords()
+void Bezier::printCoords()
 {
-	list< pair<int, int> >::iterator it;
-	
-	for(it = Coords.begin(); it != Coords.end(); it++)
+	list< pair<int,int> >::iterator it;
+	cout << "Printing Coordinates..." << endl;
+	for(it = controlCoords.begin(); it != controlCoords.end(); it++)
 	{
-		cout << "Coordinates: (" << (*it).first << ", " << (*it).second << ")" << endl;
+		cout<<"\tCoordinates: ("<<(*it).first<<","<<(*it).second<<")"<<endl;
 	}
-	
 }
 
-int SymmetricDDA::getShapeID()
+int Bezier::getShapeID()
 {
 	return shapeID;
 }
 
-void SymmetricDDA::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
+inline int Bezier::factorial(int num)
 {
-	pair<int, int> currCoords;
-	float x, y;
-	float dx, dy, xIncr, yIncr;
-	int LLE, max, power;
-	
-	startCoords.first = XCoord1;
-	startCoords.second = YCoord1;
-	endCoords.first = XCoord2;
-	endCoords.second = YCoord2;
-
-	x = XCoord1 + 0.5;
-	y = YCoord1 + 0.5;
-	dx = XCoord2 - XCoord1;
-	dy = YCoord2 - YCoord1;
-//	max = maximum(fabs(dx), fabs(dy));
-	max = fabs(dx) > fabs(dy) ? fabs(dx) : fabs(dy);
-
-	cout << "X: " << x << "\t";
-	cout << "Y: " << y << endl << endl;
-
-	for (int i = 0; i < max; i++)
-	{
-		if (max >= pow(2, i-1) && max < pow(2, i))
-		{
-			power = i;
-		}
-	}
-	
-	LLE = pow(2, power);
-
-	cout << "LLE: " << LLE << endl << endl;
-
-	xIncr = float(dx) / float(LLE);
-	yIncr = float(dy) / float(LLE);
-
-	cout << "X Incr: " << xIncr << "\t";
-	cout << "Y Incr: " << yIncr << endl << endl;
-
-	glColor3ubv(Color::BLACK);
-	glBegin(GL_POINTS);
-	glVertex2i(round(x), round(y));
-
-	currCoords.first = round(x);
-	currCoords.second = round(y);
-	Coords.push_back(currCoords);
-
-	for (int i=0; i<LLE; i++)
-	{
-		x += xIncr;
-		y += yIncr;
+	int fact = 1;
+	for(int i = 1; i <= num; i++)
+		fact = fact * i;
 		
-		currCoords.first = round(x);
-		currCoords.second = round(y);
-		Coords.push_back(currCoords);
-		
-		patternIndex = patternIndex % 4;
-		
-		if(pattern[patternIndex] == '1')
-		{
-			glVertex2i(round(x), round(y));
-//			cout << "(X,Y): (" << round(x) << "," << round(y) << ")" << endl;
-			
-//			erasePreviousLine(round(x), round(y));
-//			drawNewLine(round(x), round(y), LineColor.Red, LineColor.Green, LineColor.Blue);
-		}
-//		else
-//		{
-//			erasePreviousLine(round(x), round(y));
-//			drawNewLine(round(x), round(y), BackgroundColor.Red, BackgroundColor.Green, BackgroundColor.Blue);
-//		}
-		
-		patternIndex++;
-	}
-	
-	glEnd();
-	glFlush();
-//	LastThickness = LineThickness;
+	cout << "Factorial of " << num << " is: " << fact << endl;
+//	getch();
+	return fact;
 }
 
-bool SymmetricDDA::selectObject(pair<int, int> clickedCoords)
+inline void Bezier::computeCoeffs()
+{
+	for(int k=0; k < numControlPoints; k++)
+	{
+		Coeffs.push_back(factorial((float)numControlPoints-(float)1) / (factorial((float)k) * factorial((float)numControlPoints-(float)k-(float)1)));
+	}
+}
+
+void Bezier::computeCurveCoords(float u)
+{
+	float blendingFunc;
+	int x, y;
+	list<float>::iterator coeffsIt;
+	list< pair<int, int> >::iterator controlCoordsIt;
+	coeffsIt = Coeffs.begin();
+	controlCoordsIt = controlCoords.begin();
+	
+//	cout << "Calaulating Bezier Curve Points..." << endl;
+	x = y = 0;
+	for(int k=0; k < numControlPoints; k++)
+	{
+//		cout << "Coeff[" << k << "] : " << (*coeffsIt) << endl;
+		blendingFunc = (*coeffsIt) * pow(u, k) * pow(1-u, numControlPoints-k-1);
+//		cout << "Blending Function: " << blendingFunc << endl;
+		x += round((*controlCoordsIt).first * blendingFunc);
+		y += round((*controlCoordsIt).second * blendingFunc);
+//		cout << "X: " << x << "\tY: " << y << endl;
+		coeffsIt++;
+		controlCoordsIt++;
+	}
+//	if(controlCoords.back().first != x && controlCoords.back().second != y)
+//	{
+//		glBegin(GL_POINTS);
+//		glVertex2i(x, y);
+//		glEnd();
+//		glFlush();
+//		cout << "X: " << x << "\tY: " << y << endl;
+		Coords.push_back(make_pair(x, y));
+//	}
+}
+
+void Bezier::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
+{
+	pair<int, int> currCoords;
+	int x, y;
+	float u;
+	int blendingFunc;
+	
+//	startCoords.first = XCoord1;
+//	startCoords.second = YCoord1;
+//	endCoords.first = XCoord2;
+//	endCoords.second = YCoord2;
+	
+//	x = XCoord1;
+//	y = YCoord1;
+	
+	
+//	controlCoords.push_back(make_pair(startCoords.first, startCoords.second));
+//	numControlPoints++;
+//	controlCoords.push_back(make_pair(endCoords.first, endCoords.second));
+//	numControlPoints++;
+	
+	glColor3ubv(Color::BLACK);
+//	if(!numControlPoints)
+//	{
+//		glBegin(GL_LINES);
+//			glVertex2i(startCoords.first, startCoords.second);
+//			glVertex2i(endCoords.first, endCoords.second);
+//		glEnd();
+//		glFlush();
+//		return;
+//	}
+	
+//	glBegin(GL_POINTS);
+//	glVertex2i(x, y);
+	
+//	currCoords.first = x;
+//	currCoords.second = y;
+//	Coords.push_back(currCoords);
+	
+	computeCoeffs();
+	cout << "Going in for loop..." << endl;
+//	cout << "Curve Coords: " << numCurveCoords << endl;
+	for(float k = 0.0; k <= 1.0; k+=0.0001)
+	{
+//		u = (float)k / (float)numCurveCoords;
+		computeCurveCoords(k);
+	}
+	
+	cout << "Out of for loop..." << endl;
+	
+	
+	
+//	glEnd();
+//	glFlush();
+	
+//	printCoords();
+	
+//	if(viewport->ViewportPresent)	redrawAllObjects();
+}
+
+void Bezier::addControlCoords(pair<int, int> controlCoord)
+{
+	numControlPoints++;
+	if(controlCoords.size() >= 2)
+	{
+		pair<int, int> tempCoord;
+		tempCoord = controlCoords.back();
+		controlCoords.pop_back();
+		controlCoords.push_back(controlCoord);
+		controlCoords.push_back(tempCoord);
+		cout << "Front: (" << controlCoords.front().first << ", " << controlCoords.front().second << ")" << endl;
+		cout << "Back: (" << controlCoords.back().first << ", " << controlCoords.back().second << ")" << endl;
+	}
+	if(controlCoords.size() == 0)
+	{
+		startCoords = controlCoord;
+		controlCoords.push_back(startCoords);
+		cout << "Start: (" << startCoords.first << ", " << startCoords.second << ")" << endl;
+		return;
+	}
+	if(controlCoords.size() == 1)
+	{
+		endCoords = controlCoord;
+		controlCoords.push_back(endCoords);
+		cout << "End: (" << endCoords.first << ", " << endCoords.second << ")" << endl;
+//		return;
+	}
+	printCoords();
+	Coeffs.clear();
+	Coords.clear();
+	draw(this->startCoords.first, this->startCoords.second, this->endCoords.first, this->endCoords.second);
+	redrawAllObjects();
+}
+
+bool Bezier::selectObject(pair<int, int> clickedCoords)
 {
 	list< pair<int, int> >::iterator it;
 	for(it = Coords.begin(); it != Coords.end(); it++)
@@ -133,7 +200,7 @@ bool SymmetricDDA::selectObject(pair<int, int> clickedCoords)
 	return false;
 }
 
-void SymmetricDDA::translate(int dx, int dy)
+void Bezier::translate(int dx, int dy)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
@@ -149,10 +216,11 @@ void SymmetricDDA::translate(int dx, int dy)
 		(*it).second += dy;
 	}
 	
-//	for(list<Object*>::iterator it = objectList.begin(); it != objectList.end(); it++)
-//	{
-//		(*it)->redrawSelectedObject((*it)->color, (*it)->thickness);
-//	}
+	for(list< pair<int, int> >::iterator it = controlCoords.begin(); it != controlCoords.end(); it++)
+	{
+		(*it).first += dx;
+		(*it).second += dy;
+	}
 	
 	selectedCoords.first += dx;
 	selectedCoords.second += dy;
@@ -160,7 +228,7 @@ void SymmetricDDA::translate(int dx, int dy)
 	redrawAllObjects();
 }
 
-void SymmetricDDA::rotate(int rotAngleDeg, pair<int, int> pivot)
+void Bezier::rotate(int rotAngleDeg, pair<int, int> pivot)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
@@ -199,7 +267,7 @@ void SymmetricDDA::rotate(int rotAngleDeg, pair<int, int> pivot)
 	redrawAllObjects();
 }
 
-void SymmetricDDA::scale(float scaleFactor, pair<int, int> pivot)
+void Bezier::scale(float scaleFactor, pair<int, int> pivot)
 {
 	erasePreviousObject();
 	Axis::drawAxis();
@@ -226,26 +294,40 @@ void SymmetricDDA::scale(float scaleFactor, pair<int, int> pivot)
 	redrawAllObjects();
 }
 
-void SymmetricDDA::setPattern(string pattern)
+void Bezier::setPattern(string pattern)
 {
 	this->pattern = pattern;
 }
 
-void SymmetricDDA::setThickness(int thickness)
+void Bezier::setThickness(int thickness)
 {
 	this->thickness = thickness;
 }
 
-void SymmetricDDA::setColor(unsigned char *color)
+void Bezier::setColor(unsigned char *color)
 {
 	this->color = color;
 }
 
-void SymmetricDDA::erasePreviousObject()
+void Bezier::erasePreviousObject()
 {
 	list< pair<int, int> >::iterator it;
-	
 	glColor3ubv(Color::BACKGROUND_COLOR);
+	
+	glPointSize(3);
+	glBegin(GL_POINTS);
+	
+	it = Coords.begin();
+	
+		glVertex2i((*it).first, (*it).second);
+	
+	it = Coords.end();
+	it--;
+	
+		glVertex2i((*it).first, (*it).second);
+	glEnd();
+	glPointSize(1);
+	
 	glBegin(GL_POINTS);
 	for(it = Coords.begin(); it != Coords.end(); it++)
 	{
@@ -255,35 +337,48 @@ void SymmetricDDA::erasePreviousObject()
 	glFlush();
 }
 
-void SymmetricDDA::redrawSelectedObject(unsigned char* color, int thickness)
+void Bezier::redrawSelectedObject(unsigned char* color, int thickness)
 {
 	glColor3ubv(color);
+//	glPointSize(thickness);
+//	glEnable(GL_POINT_SMOOTH);
+	
+	// Redrawing Control Points -----------------------------
+	glPointSize(2);
+	glBegin(GL_POINTS);
+		for(list< pair<int, int> >::iterator it = controlCoords.begin(); it != controlCoords.end(); it++)
+		{
+			glVertex2i((*it).first, (*it).second);
+		}
+	glEnd();
 	glPointSize(thickness);
 	
-	bool clipped = false;
-	pair<int, int> start, end;
+	// Control Points Redrawn -------------------------------
+	
+//	bool clipped = false;
+//	pair<int, int> start, end;
 	list< pair<int, int> >::iterator it;
 	it = Coords.begin();
 	
-	start = startCoords;
-	end = endCoords;
+//	start = startCoords;
+//	end = endCoords;
 	
-	cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
-	if(viewport->ViewportPresent)
-	{
-		clipped = viewport->clipLine(&start, &end);
-//		cout << "Fully Clipped: " << !clipped << endl;
-		if(!clipped)	return;
-	
-		cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
-		while(true)
-		{
-			if((*it).first == start.first && (*it).second == start.second)	break;
-			if((*it).first - start.first >= -1 && (*it).first - start.first <= 1 && (*it).second - start.second >= -1 && (*it).second - start.second <= 1)	break;
-			it++;
-		}
-		it++;
-	}
+//	cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
+//	if(viewport->ViewportPresent)
+//	{
+//		clipped = viewport->clipLine(&start, &end);
+////		cout << "Fully Clipped: " << !clipped << endl;
+//		if(!clipped)	return;
+//	
+////		cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
+//		while(true)
+//		{
+//			if((*it).first == start.first && (*it).second == start.second)	break;
+//			if((*it).first - start.first >= -1 && (*it).first - start.first <= 1 && (*it).second - start.second >= -1 && (*it).second - start.second <= 1)	break;
+//			it++;
+//		}
+//		it++;
+//	}
 	
 //	cout << "Starting From X: " << (*it).first << "\tY: " << (*it).second << endl;
 //	cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
@@ -299,14 +394,15 @@ void SymmetricDDA::redrawSelectedObject(unsigned char* color, int thickness)
 				glVertex2i((*it).first, (*it).second);
 			}
 			patternIndex++;
-			if((*it).first == end.first && (*it).second == end.second)	break;
-			if((*it).first - end.first >= -1 && (*it).first - end.first <= 1 && (*it).second - end.second >= -1 && (*it).second - end.second <= 1)	break;
+//			if((*it).first == end.first && (*it).second == end.second)	break;
+//			if((*it).first - end.first >= -1 && (*it).first - end.first <= 1 && (*it).second - end.second >= -1 && (*it).second - end.second <= 1)	break;
 		}
 	glEnd();
 	glFlush();
+//	glDisable(GL_POINT_SMOOTH);
 }
 
-void SymmetricDDA::fourFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+void Bezier::fourFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
 {
 	unsigned char XYPixelColor[4];
 	
@@ -335,7 +431,7 @@ void SymmetricDDA::fourFillBoundary(int x, int y, unsigned char* fillColor, unsi
 
 }
 
-void SymmetricDDA::eightFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
+void Bezier::eightFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor)
 {
 	unsigned char XYPixelColor[4];
 	
@@ -370,7 +466,7 @@ void SymmetricDDA::eightFillBoundary(int x, int y, unsigned char* fillColor, uns
 
 }
 
-void SymmetricDDA::floodFill(int x, int y, unsigned char* fillColor)
+void Bezier::floodFill(int x, int y, unsigned char* fillColor)
 {
 	unsigned char XYPixelColor[4];
 	

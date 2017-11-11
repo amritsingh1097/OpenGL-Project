@@ -4,9 +4,9 @@
 CPP      = g++.exe
 CC       = gcc.exe
 WINDRES  = windres.exe
-OBJ      = main.o SymmetricDDA.o SimpleDDA.o Circle.o Ellipse.o Axis.o Color.o Pattern.o Thickness.o BresenhamLDA.o Viewport.o Mid_PointLDA.o
-LINKOBJ  = main.o SymmetricDDA.o SimpleDDA.o Circle.o Ellipse.o Axis.o Color.o Pattern.o Thickness.o BresenhamLDA.o Viewport.o Mid_PointLDA.o
-LIBS     = -L"E:/IDEs/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -lopengl32 -lglu32 -lglut32 -m32 -pg
+OBJ      = main.o SymmetricDDA.o SimpleDDA.o Circle.o Ellipse.o Axis.o Color.o Pattern.o Thickness.o BresenhamLDA.o Viewport.o Mid_PointLDA.o Bezier.o B_Spline.o
+LINKOBJ  = main.o SymmetricDDA.o SimpleDDA.o Circle.o Ellipse.o Axis.o Color.o Pattern.o Thickness.o BresenhamLDA.o Viewport.o Mid_PointLDA.o Bezier.o B_Spline.o
+LIBS     = -L"E:/IDEs/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib32" -static-libgcc -lopengl32 -lglu32 -lglut32 -Wl,--stack=20971520 -m32 -pg
 INCS     = -I"E:/IDEs/Dev-Cpp/MinGW64/include" -I"E:/IDEs/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"E:/IDEs/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include"
 CXXINCS  = -I"E:/IDEs/Dev-Cpp/MinGW64/include" -I"E:/IDEs/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"E:/IDEs/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include" -I"E:/IDEs/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.9.2/include/c++"
 BIN      = OpenGL.exe
@@ -59,3 +59,9 @@ Viewport.o: Viewport.cpp
 
 Mid_PointLDA.o: Mid_PointLDA.cpp
 	$(CPP) -c Mid_PointLDA.cpp -o Mid_PointLDA.o $(CXXFLAGS)
+
+Bezier.o: Bezier.cpp
+	$(CPP) -c Bezier.cpp -o Bezier.o $(CXXFLAGS)
+
+B_Spline.o: B_Spline.cpp
+	$(CPP) -c B_Spline.cpp -o B_Spline.o $(CXXFLAGS)

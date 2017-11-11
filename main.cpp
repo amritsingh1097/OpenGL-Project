@@ -10,6 +10,8 @@
 #include "mid_pointlda.h"
 #include "circle.h"
 #include "ellipse.h"
+#include "bezier.h"
+#include "b_spline.h"
 #include "viewport.h"
 using namespace std;
 
@@ -20,16 +22,22 @@ int transformation = 0;
 int mouseClickCount = 0;
 int currThickness = Thickness::THICKNESS_1;
 unsigned char* currColor = Color::BLACK;
+unsigned char* fillColor = Color::PURPLE;
 string currPattern = Pattern::HEX_F;
 int XCoord1, YCoord1, XCoord2, YCoord2;
-bool ViewportPresent = false;
+//bool ViewportPresent = false;
 bool menuUsageFlag = false;
 bool isObjectSelected = false;
 int rotAngleDeg = 0;
+float scaleFactor = 1;
+
+int fillingAlgo = 0;
 
 int menu1 = -10, menu2 = -10;
 
 list<Object*> objectList;
+list< pair<int, int> > pointList;
+
 pair<int, int> selectedCoords, seed;
 pair<int, int> pivotCoords = pair<int, int>(0, 0);
 Object* selectedObject;
@@ -37,7 +45,7 @@ Viewport* viewport;
 
 void display();
 
-void initVariables()
+inline void initVariables()
 {
 	viewport = new Viewport(-ScreenSizeX/2, -ScreenSizeY/2, ScreenSizeX/2, ScreenSizeY/2);
 }
@@ -51,17 +59,6 @@ void init()
 	gluOrtho2D(-ScreenSizeX/2, ScreenSizeX/2, -ScreenSizeY/2, ScreenSizeY/2);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-}
-
-void redrawAllObjects()
-{
-	cout << "Redrawing " << objectList.size() << " Objects..." << endl;
-	list<Object*>::iterator it;
-	for(it = objectList.begin(); it != objectList.end(); it++)
-	{
-		(*it)->redrawSelectedObject((*it)->color, (*it)->thickness);
-	}
-	cout << objectList.size() << " Objects Redrawn." << endl;
 }
 
 void plotPoint(int x, int y)
@@ -81,6 +78,26 @@ void plotPoint(int x, int y)
 	}
 }
 
+void redrawAllObjects()
+{
+	cout << "Redrawing " << objectList.size() << " Objects..." << endl;
+	glClear(GL_COLOR_BUFFER_BIT);
+	Axis::drawAxis();
+
+	if(viewport->ViewportPresent)	viewport->drawViewport();
+
+	for(list< pair<int, int> >::iterator it = pointList.begin(); it != pointList.end(); it++)
+	{
+		plotPoint((*it).first, (*it).second);
+	}
+	
+	for(list<Object*>::iterator it = objectList.begin(); it != objectList.end(); it++)
+	{
+		(*it)->redrawSelectedObject((*it)->color, (*it)->thickness);
+	}
+//	cout << objectList.size() << " Objects Redrawn." << endl;
+}
+
 void redraw()
 {
 //	if(ScreenCleared)	return;
@@ -90,16 +107,17 @@ void redraw()
 		{
 			case -2:
 			{
-				cout << endl << endl << "Drawing Viewport..." << endl;
+//				cout << endl << endl << "Drawing Viewport..." << endl;
 //				viewport = new Viewport(XCoord1, YCoord1, XCoord2, YCoord2);
 				viewport->setViewport(XCoord1, YCoord1, XCoord2, YCoord2);
 				display();
 				viewport->drawViewport();
 				viewport->printCoords();
-				ViewportPresent = true;
+				viewport->ViewportPresent = true;
+				redrawAllObjects();
 				Choice = 0;
 				glutChangeToMenuEntry(2, "Remove Viewport", -3);
-				cout << endl << endl << "Viewport Drawn." << endl;
+//				cout << endl << endl << "Viewport Drawn." << endl;
 				break;
 			}
 			case -5:
@@ -107,7 +125,28 @@ void redraw()
 				cout << "Object Color: R: " << (int)Color::RED[0] << "\tG: " << (int)Color::RED[1] << "\tB: " << (int)Color::RED[2] << endl;
 				cout << "Fill Color: R: " << (int)Color::PURPLE[0] << "\tG: " << (int)Color::PURPLE[1] << "\tB: " << (int)Color::PURPLE[2] << endl;
 				cout << "X: " << seed.first << "\tY: " << seed.second << endl;
-				selectedObject->fillBoundary(seed.first, seed.second, Color::PURPLE, Color::RED);	
+				if(selectedObject->getShapeID() >= 1 && selectedObject->getShapeID() <= 6)
+				{
+					selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
+					if(fillingAlgo == 1)	selectedObject->fourFillBoundary(seed.first, seed.second, fillColor, Color::BLACK);
+					else if(fillingAlgo == 2)	selectedObject->eightFillBoundary(seed.first, seed.second, fillColor, Color::BLACK);
+					else if(fillingAlgo == 3)	selectedObject->floodFill(seed.first, seed.second, fillColor);
+					break;
+				}
+				if(selectedObject->isFilled && selectedObject->fillColor == fillColor)	break;
+				if(selectedObject->isFilled && selectedObject->fillColor != fillColor)
+				{
+					selectedObject->setFillColor(fillColor);
+					cout << "Refilling Same Coords..." << endl;
+					selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
+					break;
+				}
+				selectedObject->setFillColor(fillColor);
+//				selectedObject->fourFillBoundary(seed.first, seed.second, fillColor, Color::RED);
+				if(fillingAlgo == 1)	selectedObject->fourFillBoundary(seed.first, seed.second, fillColor, Color::RED);
+				else if(fillingAlgo == 2)	selectedObject->eightFillBoundary(seed.first, seed.second, fillColor, Color::RED);
+				else if(fillingAlgo == 3)	selectedObject->floodFill(seed.first, seed.second, fillColor);
+				selectedObject->isFilled = true;
 				glFlush();
 //				selectedObject->fillBoundary(seed, Color::PURPLE, Color::RED);
 				break;
@@ -133,13 +172,16 @@ void redraw()
 				cout << "\tX: " << selectedCoords.first << "\tY: " << selectedCoords.second << endl;
 				cout << "Pivot Coords:" << endl;
 				cout << "\tX: " << pivotCoords.first << "\tY: " << pivotCoords.second << endl;
-				selectedObject->scale(1, 1, pivotCoords);
+				
+				selectedObject->isFilled = false;
+				
+				selectedObject->scale(scaleFactor, pivotCoords);
 				break;
-			case 1:
-				cout << "Plotting Point..." << endl;
-				plotPoint(XCoord1, YCoord1);
-				cout << "Point Plotted..." << endl;
-				break;
+//			case 1: Done in mouseEvent Function
+//				cout << "Plotting Point..." << endl;
+//				plotPoint(XCoord1, YCoord1);
+//				cout << "Point Plotted..." << endl;
+//				break;
 			case 2:
 			{
 				cout << endl << endl << "Drawing Symmetric Line..." << endl;
@@ -147,6 +189,7 @@ void redraw()
 				glutSetWindowTitle(symmetricLine->objectName);
 				symmetricLine->draw(XCoord1, YCoord1, XCoord2, YCoord2);
 				objectList.push_back(symmetricLine);
+				if(viewport->ViewportPresent)	redrawAllObjects();
 				cout << "Symmertic Line Drawn." << endl;
 				break;
 			}
@@ -157,6 +200,7 @@ void redraw()
 				glutSetWindowTitle(simpleLine->objectName);
 				simpleLine->draw(XCoord1, YCoord1, XCoord2, YCoord2);
 				objectList.push_back(simpleLine);
+				if(viewport->ViewportPresent)	redrawAllObjects();
 				cout << "Simple Line Drawn." << endl;
 				break;
 			}
@@ -167,6 +211,7 @@ void redraw()
 				glutSetWindowTitle(bresenhamLine->objectName);
 				bresenhamLine->draw(XCoord1, YCoord1, XCoord2, YCoord2);
 				objectList.push_back(bresenhamLine);
+				if(viewport->ViewportPresent)	redrawAllObjects();
 				cout << "Bresenham Line Drawn." << endl;
 				break;
 			}
@@ -177,6 +222,7 @@ void redraw()
 				glutSetWindowTitle(midpointLine->objectName);
 				midpointLine->draw(XCoord1, YCoord1, XCoord2, YCoord2);
 				objectList.push_back(midpointLine);
+				if(viewport->ViewportPresent)	redrawAllObjects();
 				cout << "Mid-Point Line Drawn." << endl;
 				break;
 			}
@@ -200,6 +246,36 @@ void redraw()
 				cout << "Ellipse Drawn." << endl;
 				break;
 			}
+			case 8:
+			{
+				cout << endl << endl << "Drawing Bezier Curve..." << endl;
+				Bezier *curve = new Bezier(currColor, currThickness, currPattern);
+				glutSetWindowTitle(curve->objectName);
+//				curve->draw(XCoord1, YCoord1, XCoord2, YCoord2);
+				curve->isDrawn = true;
+				objectList.push_back(curve);
+				if(viewport->ViewportPresent)	redrawAllObjects();
+				selectedObject = curve;
+				isObjectSelected = true;
+				curve->addControlCoords(make_pair(XCoord1, YCoord1));
+				curve->addControlCoords(make_pair(XCoord2, YCoord2));
+				cout << "Bezier Curve Drawn." << endl;
+				break;
+			}
+			case 9:
+			{
+				cout << endl << endl << "Drawing B-Spline Curve..." << endl;
+				B_Spline *curve = new B_Spline(currColor, currThickness, currPattern);
+				glutSetWindowTitle(curve->objectName);
+				curve->draw(XCoord1, YCoord1, XCoord2, YCoord2);
+				curve->isDrawn = true;
+				objectList.push_back(curve);
+				if(viewport->ViewportPresent)	redrawAllObjects();
+				selectedObject = curve;
+				isObjectSelected = true;
+				cout << "B-Spline Curve Drawn." << endl;
+				break;
+			}
 //			case 9:
 //				cout << "Polygon" << endl;
 //				if(WeilerAtherton())
@@ -220,7 +296,7 @@ void redraw()
 
 void display()
 {
-	cout << "Inside Display..." << endl;
+//	cout << "Inside Display..." << endl;
 	glClear(GL_COLOR_BUFFER_BIT);
 	Axis::drawAxis();
 	viewport->drawViewport();
@@ -246,13 +322,16 @@ void mouseEvent(int button, int state, int x, int y)
 		x = x - ScreenSizeX/2;
 		y = ScreenSizeY/2 - y;
 	
-		glColor3ubv(Color::BLACK);	
+		glColor3ubv(Color::BLACK);
 		
+		// For Plotting Point
 		if(Choice == 1)
 		{
-			XCoord1 = x;
-			YCoord1 = y;
-			redraw();
+//			XCoord1 = x;
+//			YCoord1 = y;
+			pointList.push_back(make_pair(x, y));
+//			redraw();
+			plotPoint(x, y);
 			return;
 		}
 		
@@ -271,11 +350,15 @@ void mouseEvent(int button, int state, int x, int y)
 		{
 			bool result;
 			cout << "Selecting Object..." << endl;
+			if(viewport->isClipped(x, y))	return;
 			selectedCoords.first = x;
 			selectedCoords.second = y;
 			
-			list< Object* >::iterator it;
-			for(it = objectList.begin(); it != objectList.end(); it++)
+			if(isObjectSelected)	selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
+			
+			cout << "Previous Object Redrawn." << endl;
+			list< Object* >::reverse_iterator it;
+			for(it = objectList.rbegin(); it != objectList.rend(); it++)
 			{
 				result = (*it)->selectObject(selectedCoords);
 				if(result)
@@ -285,11 +368,30 @@ void mouseEvent(int button, int state, int x, int y)
 					cout << "Object Selected..." << endl;
 //					glutSetMenu(menu2);
 //					glutAttachMenu(GLUT_RIGHT_BUTTON);
-//					return;
+					return;
 				}
 			}
+			selectedObject = NULL;
+			isObjectSelected = false;
+			cout << "Object not selected..." << endl;
 			return;
 		}
+		
+		if(Choice == 8 && isObjectSelected && ((Bezier*)selectedObject)->isDrawn && ((Bezier*)selectedObject)->numControlPoints <= 7)
+		{
+			cout << "Adding Control Points..." << endl;
+			((Bezier*)selectedObject)->addControlCoords(make_pair(x, y));
+//			((Bezier*)selectedObject)->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
+//			redraw();
+			cout << "Control Points Added..." << endl;
+			return;
+		}
+		
+//		if(Choice == 8)
+//		{
+//			((B_Spline*)selectedObject)->numControlPoints++;
+//			((B_Spline*)selectedObject)->controlPoints.push_back(make_pair(x, y));
+//		}
 
 		mouseClickCount++;
 		if(mouseClickCount == 1)
@@ -331,7 +433,7 @@ void menuStatus(int status, int x, int y)
 
 void keyboardEvent(unsigned char key, int x, int y)
 {
-	if(menuUsageFlag)	return;
+	if(menuUsageFlag || !isObjectSelected)	return;
 	
 	cout << "Key Pressed..." << endl;
 	
@@ -392,43 +494,63 @@ void keyboardEvent(unsigned char key, int x, int y)
 			currPattern = Pattern::HEX_F;
 			break;
 	}
+	selectedObject->setPattern(currPattern);
+	redrawAllObjects();
 }
 
 void lineColorSubmenu(int id)
 {
-	if(selectedObject == NULL)	return;
+	if(!isObjectSelected)	return;
 	
+	unsigned char* tempColor = currColor;
 //	cout << "ID: " << id << endl;
 	switch(id)
 	{
 		case 11:
+		case 51:
 			currColor = Color::BLACK;
 			break;
 		case 12:
+		case 52:
 			currColor = Color::RED;
 			break;
 		case 13:
+		case 53:
 			currColor = Color::BLUE;
 			break;
 		case 14:
+		case 54:
 			currColor = Color::GREEN;
 			break;
 		case 15:
+		case 55:
 			currColor = Color::GRAY;
 			break;
 		case 16:
+		case 56:
 			currColor = Color::CYAN;
 			break;
 		case 17:
+		case 57:
 			currColor = Color::YELLOW;
 			break;
 		case 18:
+		case 58:
 			currColor = Color::PURPLE;
 			break;
 		case 19:
+		case 59:
 			currColor = Color::MAGENTA;
 			break;
 	}
+	
+	if(id > 50 && id <= 60)
+	{
+		fillColor = currColor;
+		currColor = tempColor;
+		return;
+	}
+	
 	selectedObject->setColor(currColor);
 	redrawAllObjects();
 //	selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
@@ -436,7 +558,7 @@ void lineColorSubmenu(int id)
 
 void lineThicknessSubmenu(int id)
 {
-	if(selectedObject == NULL)	return;
+	if(!isObjectSelected)	return;
 	
 	switch(id)
 	{
@@ -469,7 +591,7 @@ void lineThicknessSubmenu(int id)
 
 void rotAngleMenu(int id)
 {
-	if(selectedObject == NULL)
+	if(!isObjectSelected)
 	{
 		cout << "No Object Selected..." << endl;
 		return;
@@ -511,38 +633,78 @@ void rotAngleMenu(int id)
 	}
 }
 
+void scalingMenu(int id)
+{
+	if(!isObjectSelected)
+	{
+		cout << "No Object Selected..." << endl;
+		return;
+	}
+	
+	Choice = -13;
+	switch(id)
+	{
+		case 41:
+			scaleFactor = 0.5;
+			break;
+		case 42:
+			scaleFactor = 2;
+			break;
+		case 43:
+			scaleFactor = 3;
+			break;
+		case 44:
+			scaleFactor = 4;
+			break;
+	}
+}
+
 void mainMenu(int id)
 {
 	cout << "Inside Menu..." << endl;
+	if(id == -1)
+	{
+		ScreenCleared = true;
+		pointList.clear();
+		objectList.clear();
+		mouseClickCount = 0;
+		Choice = 0;
+		selectedObject = NULL;
+		isObjectSelected = false;
+		display();
+		return;
+	}
+	if((id != -11 && id != -2 && id != -4 && id != -5) && isObjectSelected)
+	{
+		cout << "Redrawing Selected Object..." << endl;
+		selectedObject->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
+		selectedObject = NULL;
+		isObjectSelected = false;
+		cout << "Object Drawn." << endl;
+//		return;
+	}
 	if(id > 0 && id <= 10)
 	{
 		selectedCoords.first = 0;
 		selectedCoords.second = 0;
 		selectedObject = NULL;
+		mouseClickCount = 0;
+		Choice = id;
 		cout << "Selected Coords:\n\tX: " << selectedCoords.first << "\tY: " << selectedCoords.second << endl;
-//		return;
-	}
-	if((id == -11 || id == -13) && (selectedObject == NULL))
-	{
-		cout << "No Object Selected..." << endl;
 		return;
 	}
-	if(id == -1)
+	if((id == -11) && !isObjectSelected)
 	{
-		ScreenCleared = true;
-		objectList.clear();
-		mouseClickCount = 0;
-		Choice = 0;
-		display();
+		cout << "No Object Selected..." << endl;
 		return;
 	}
 	if(id == -2)
 	{
 		ScreenCleared = false;
-		objectList.clear();
+//		objectList.clear();
 		mouseClickCount = 0;
-		Choice = 0;
-		display();
+//		Choice = 0;
+//		display();
 	}
 	if(id == -3)
 	{
@@ -551,9 +713,9 @@ void mainMenu(int id)
 		mouseClickCount = 0;
 		viewport->removeViewport();
 		display();
-		redrawAllObjects();
+//		redrawAllObjects();
 		glutChangeToMenuEntry(2, "Draw Viewport", -2);
-		ViewportPresent = false;
+		viewport->ViewportPresent = false;
 		return;
 	}
 	mouseClickCount = 0;
@@ -562,10 +724,18 @@ void mainMenu(int id)
 	cout << "ID: " << id << endl;
 }
 
+void fillingSubmenu(int id)
+{
+	if(!isObjectSelected)	return;
+	Choice = -5;
+	fillingAlgo = id;
+}
+
 void createMenu()
 {
-	int viewportSubmenuID = -10, shapeSubmenuID = -10, transformSubmenuID = -10, rotationSubmenuID = -10, fillingSubmenuID = -10, lineColorSubmenuID = -10, thicknessSubmenuID = -10;
-	int shapeEntryID = 0, lineColorEntryID = 10, lineThicknessEntryID = 20, rotationEntryID = 30;//, XYColorEntryID = 30, fillingEntryID = 40;
+	int viewportSubmenuID = -10, shapeSubmenuID = -10, transformSubmenuID = -10, rotationSubmenuID = -10,
+		scaleSubmenuID = -10, fillingSubmenuID = -10, lineColorSubmenuID = -10, fillColorSubmenuID = -10, thicknessSubmenuID = -10;
+	int shapeEntryID = 0, lineColorEntryID = 10, lineThicknessEntryID = 20, rotationEntryID = 30, scaleEntryID = 40, fillColorEntryID = 50, fillingEntryID = 0;//, XYColorEntryID = 30, fillingEntryID = 40;
 
 //	viewportSubmenuID = glutCreateMenu(NULL);
 //	glutAddMenuEntry("Liang Barsky", );
@@ -578,6 +748,8 @@ void createMenu()
 	glutAddMenuEntry("Mid-Point LDA", ++shapeEntryID);
 	glutAddMenuEntry("Circle", ++shapeEntryID);
 	glutAddMenuEntry("Ellipse", ++shapeEntryID);
+	glutAddMenuEntry("Bezier Curve", ++shapeEntryID);
+	glutAddMenuEntry("B-Spline Curve", ++shapeEntryID);
 //	glutAddMenuEntry("Polygon", ++shapeEntryID);
 
 	rotationSubmenuID = glutCreateMenu(rotAngleMenu);
@@ -592,15 +764,32 @@ void createMenu()
 	glutAddMenuEntry("300", ++rotationEntryID);
 	glutAddMenuEntry("330", ++rotationEntryID);
 
+	scaleSubmenuID = glutCreateMenu(scalingMenu);
+	glutAddMenuEntry("0.5", ++scaleEntryID);
+	glutAddMenuEntry("2", ++scaleEntryID);
+	glutAddMenuEntry("3", ++scaleEntryID);
+	glutAddMenuEntry("4", ++scaleEntryID);
+	
 	transformSubmenuID = glutCreateMenu(mainMenu);
 	glutAddMenuEntry("Translate", -11);
 	glutAddSubMenu("Rotate", rotationSubmenuID);
-	glutAddMenuEntry("Scale", -13);
+	glutAddSubMenu("Scale", scaleSubmenuID);
 
-//	fillingSubmenuID = glutCreateMenu();
-//	glutAddMenuEntry("4-Fill Seed Algorithm", ++fillingEntryID);
-//	glutAddMenuEntry("8-Fill Seed Algorithm", ++fillingEntryID);
-//	glutAddMenuEntry("Flood Fill Algorithm", ++fillingEntryID);
+	fillingSubmenuID = glutCreateMenu(fillingSubmenu);
+	glutAddMenuEntry("4-Fill Seed Algorithm", ++fillingEntryID);
+	glutAddMenuEntry("8-Fill Seed Algorithm", ++fillingEntryID);
+	glutAddMenuEntry("Flood Fill Algorithm", ++fillingEntryID);
+
+	fillColorSubmenuID = glutCreateMenu(lineColorSubmenu);
+	glutAddMenuEntry("Black", ++fillColorEntryID);
+	glutAddMenuEntry("Red", ++fillColorEntryID);
+	glutAddMenuEntry("Blue", ++fillColorEntryID);
+	glutAddMenuEntry("Green", ++fillColorEntryID);
+	glutAddMenuEntry("Gray", ++fillColorEntryID);
+	glutAddMenuEntry("Cyan", ++fillColorEntryID);
+	glutAddMenuEntry("Yellow", ++fillColorEntryID);
+	glutAddMenuEntry("Purple", ++fillColorEntryID);
+	glutAddMenuEntry("Magenta", ++fillColorEntryID);
 
 	lineColorSubmenuID = glutCreateMenu(lineColorSubmenu);
 	glutAddMenuEntry("Black", ++lineColorEntryID);
@@ -635,8 +824,9 @@ void createMenu()
 	glutAddMenuEntry("Select Object", -4);
 	glutAddSubMenu("Shapes", shapeSubmenuID);
 	glutAddSubMenu("Transformations", transformSubmenuID);
-	glutAddMenuEntry("Filling", -5);
+	glutAddSubMenu("Filling", fillingSubmenuID);
 	glutAddSubMenu("Color", lineColorSubmenuID);
+	glutAddSubMenu("Fill Color", fillColorSubmenuID);
 	glutAddSubMenu("Thickness", thicknessSubmenuID);
 	
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
@@ -649,7 +839,7 @@ void resizeHandler(int width, int height)
 	init();
 	Choice = 0;
 	mouseClickCount = 0;
-	if(!ViewportPresent)	viewport->setViewport(-ScreenSizeX/2, -ScreenSizeY/2, ScreenSizeX/2, ScreenSizeY/2);
+//	if(!viewport->ViewportPresent)	viewport->setViewport(-ScreenSizeX/2, -ScreenSizeY/2, ScreenSizeX/2, ScreenSizeY/2);
 }
 
 void glut(int argc, char** argv)
@@ -666,6 +856,7 @@ void glut(int argc, char** argv)
 	glutKeyboardFunc(keyboardEvent);
 	glutReshapeFunc(resizeHandler);
 	glutDisplayFunc(display);
+//	glutFullScreen();
 	glutMainLoop();
 }
 
