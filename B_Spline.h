@@ -3,6 +3,7 @@
 
 #include "object.h"
 #include <bits/stdc++.h>
+#include <conio.h>
 #include <gl/glut.h>
 using namespace std;
 
@@ -11,12 +12,11 @@ class B_Spline : public Object
 	int shapeID;
 	int curveDegree;
 	void computeCurveCoords(float u);
+	float calculateCoefficient(float u,int k,int degree);
 	float computeBlendingFunc(float u, int k, int degree);
 	public:
 		pair<int, int> startCoords, endCoords;
 		list< pair<int, int> > controlCoords;
-		int numKnotCoords;
-		int numCurveCoords;
 		int numControlCoords;
 		bool isDrawn;
 		B_Spline(unsigned char* color, int thickness, string pattern, int curveDegree);

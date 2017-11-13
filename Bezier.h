@@ -17,7 +17,6 @@ class Bezier : public Object
 		pair<int, int> startCoords, endCoords;
 		list< pair<int, int> > controlCoords;
 		list<float> Coeffs;
-		int numCurveCoords;
 		int numControlCoords;
 		bool isDrawn;
 		Bezier(unsigned char* color, int thickness, string pattern);

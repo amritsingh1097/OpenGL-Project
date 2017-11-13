@@ -20,7 +20,6 @@ B_Spline::B_Spline(unsigned char* color, int thickness, string pattern, int curv
 	this->pattern = pattern;
 	this->patternIndex = 0;
 	this->curveDegree = curveDegree;
-	this->numCurveCoords = 1000;
 	this->numControlCoords = 0;
 	this->isDrawn = false;
 	this->objectName = (char*)"B_Spline Curve";
@@ -55,14 +54,11 @@ float B_Spline::computeBlendingFunc(float u, int k, int degree)
 			return 0;
 		}
 	}
-	
-	cout << "K: " << k << "\tDegree: " << degree << endl;
-	cout << "First: " << (u - k) / (degree-1) << endl;
-	cout << "Second: " << (k+degree - u) / (degree - 1) << endl;
-	blendingFunc = ((u - k) / (degree-1) * computeBlendingFunc(u, k, degree-1))
-				 + ((k+degree - u) / (degree - 1) * computeBlendingFunc(u, k+1, degree-1));
+
+	blendingFunc = (((u - k) / (degree-1) * computeBlendingFunc(u, k, degree-1))
+				 + ((k+degree - u) / (degree - 1) * computeBlendingFunc(u, k+1, degree-1)));
 				 
-	cout << "Blending Function: " << blendingFunc << endl;
+//	cout << "Blending Function: " << blendingFunc << endl;
 	return blendingFunc;
 }
 
@@ -72,11 +68,11 @@ void B_Spline::computeCurveCoords(float u)
 	int x, y;
 	list< pair<int, int> >::iterator controlCoordsIt = controlCoords.begin();
 	
-	cout << "Calaulating B-Spline Curve Points..." << endl;
+//	cout << "Calaulating B-Spline Curve Points..." << endl;
 	x = y = 0;
 	for(int k = 0; k < numControlCoords; k++)
 	{
-		blendingFunc = round(computeBlendingFunc(u, k, curveDegree));
+		blendingFunc = computeBlendingFunc(u, k, curveDegree);
 //		cout << "Blending Function: " << blendingFunc << endl;
 		x += round((*controlCoordsIt).first * blendingFunc);
 		y += round((*controlCoordsIt).second * blendingFunc);
@@ -85,60 +81,46 @@ void B_Spline::computeCurveCoords(float u)
 	}
 	if(Coords.back().first != x && Coords.back().second != y)
 	{
-		glBegin(GL_POINTS);
-		glVertex2i(x, y);
-		glEnd();
-		glFlush();
-		cout << endl << endl << "X: " << x << "\tY: " << y << endl;
+//		glBegin(GL_POINTS);
+//		glVertex2i(x, y);
+//		glEnd();
+//		glFlush();
+//		cout << endl << endl << "X: " << x << "\tY: " << y << endl;
+//		getch();
 		Coords.push_back(make_pair(x, y));
+	}
+}
+
+
+float B_Spline :: calculateCoefficient(float u,int k,int degree)
+{
+	if(degree == 1)
+	{
+		if(u >= float(k) && u <= float((k+1)))
+			return 1;
+		else
+			return 0;
+	}
+	else
+	{
+		return((u-k)/(degree-1)*calculateCoefficient(u,k,degree-1) + (k+degree - u)/(degree-1)*calculateCoefficient(u,k+1,degree-1));
 	}
 }
 
 void B_Spline::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
 {
-//	pair<int, int> currCoords;
-//	int x, y;
-	
-//	startCoords.first = XCoord1;
-//	startCoords.second = YCoord1;
-//	endCoords.first = XCoord2;
-//	endCoords.second = YCoord2;
-	
-//	x = XCoord1;
-//	y = YCoord1;
-	
-	
 	glColor3ubv(Color::BLACK);
-//	glBegin(GL_POINTS);
-//	glVertex2i(x, y);
-//	
-//	currCoords.first = x;
-//	currCoords.second = y;
-//	Coords.push_back(currCoords);
 	
-//	glEnd();
-//	glFlush();
-
-	cout << "Going in for loop..." << endl;
-	cout << "Degree: " << curveDegree-1 << endl;
-	for(float k = (float)curveDegree-1; k <= numControlCoords; k+=0.01)
+	for(float k = curveDegree-1; k <= numControlCoords; k+=0.0001)
 	{
-//		u = (float)k / (float)numCurveCoords;
 		computeCurveCoords(k);
 	}
-	
-	cout << "Out of for loop..." << endl;
-
-
-	
-//	if(viewport->ViewportPresent)	redrawAllObjects();
+	Coords.pop_front();
 }
 
 void B_Spline::addControlCoords(pair<int, int> controlCoord)
 {
 	numControlCoords++;
-	curveDegree = 2;
-//	degree = numControlCoords-1;
 	if(controlCoords.size() >= 2)
 	{
 		pair<int, int> tempCoord;
@@ -146,21 +128,21 @@ void B_Spline::addControlCoords(pair<int, int> controlCoord)
 		controlCoords.pop_back();
 		controlCoords.push_back(controlCoord);
 		controlCoords.push_back(tempCoord);
-		cout << "Front: (" << controlCoords.front().first << ", " << controlCoords.front().second << ")" << endl;
-		cout << "Back: (" << controlCoords.back().first << ", " << controlCoords.back().second << ")" << endl;
+//		cout << "Front: (" << controlCoords.front().first << ", " << controlCoords.front().second << ")" << endl;
+//		cout << "Back: (" << controlCoords.back().first << ", " << controlCoords.back().second << ")" << endl;
 	}
 	if(controlCoords.size() == 0)
 	{
 		startCoords = controlCoord;
 		controlCoords.push_back(startCoords);
-		cout << "Start: (" << startCoords.first << ", " << startCoords.second << ")" << endl;
+//		cout << "Start: (" << startCoords.first << ", " << startCoords.second << ")" << endl;
 		return;
 	}
 	if(controlCoords.size() == 1)
 	{
 		endCoords = controlCoord;
 		controlCoords.push_back(endCoords);
-		cout << "End: (" << endCoords.first << ", " << endCoords.second << ")" << endl;
+//		cout << "End: (" << endCoords.first << ", " << endCoords.second << ")" << endl;
 //		return;
 	}
 //	printCoords();
@@ -194,6 +176,12 @@ void B_Spline::translate(int dx, int dy)
 	endCoords.second += dy;
 	
 	for(list< pair<int, int> >::iterator it = Coords.begin(); it != Coords.end(); it++)
+	{
+		(*it).first += dx;
+		(*it).second += dy;
+	}
+
+	for(list< pair<int, int> >::iterator it = controlCoords.begin(); it != controlCoords.end(); it++)
 	{
 		(*it).first += dx;
 		(*it).second += dy;
@@ -232,6 +220,15 @@ void B_Spline::rotate(int rotAngleDeg, pair<int, int> pivot)
 	tempY = endCoords.second;
 	endCoords.first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
 	endCoords.second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
+
+	// Rotating Control Coordinates
+	for(list< pair<int, int> >::iterator it = controlCoords.begin(); it != controlCoords.end(); it++)
+	{
+		tempX = (*it).first;
+		tempY = (*it).second;
+		(*it).first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
+		(*it).second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
+	}
 	
 	Coords.clear();
 	draw(startCoords.first, startCoords.second, endCoords.first, endCoords.second);
@@ -259,7 +256,14 @@ void B_Spline::scale(float scaleFactor, pair<int, int> pivot)
 	cout << "Scaling End Coords..." << endl;
 	endCoords.first = round(((float)endCoords.first * scaleFactor) + ((float)pivot.first - ((float)pivot.first * scaleFactor)));
 	endCoords.second = round(((float)endCoords.second * scaleFactor) + ((float)pivot.second - ((float)pivot.second * scaleFactor)));
-	
+
+	// Scaling Control Coordinates
+	for(list< pair<int, int> >::iterator it = controlCoords.begin(); it != controlCoords.end(); it++)
+	{
+		(*it).first = round(((float)(*it).first * scaleFactor) + ((float)pivot.first - ((float)pivot.first * scaleFactor)));
+		(*it).second = round(((float)(*it).second * scaleFactor) + ((float)pivot.second - ((float)pivot.second * scaleFactor)));
+	}
+
 	cout << "Clearing Coords..." << endl;
 	Coords.clear();
 	cout << "Calling Draw..." << endl;
@@ -335,7 +339,7 @@ void B_Spline::redrawSelectedObject(unsigned char* color, int thickness)
 	// Control Points Redrawn -------------------------------
 
 	
-	glBegin(GL_POINTS);
+	glBegin(GL_LINES);
 		for(it; it != Coords.end(); it++)
 		{
 //			cout << "Points X: " << (*it).first << "\tY: " << (*it).second << endl;

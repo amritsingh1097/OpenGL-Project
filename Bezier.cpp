@@ -20,7 +20,6 @@ Bezier::Bezier(unsigned char* color, int thickness, string pattern)
 	this->pattern = pattern;
 	this->patternIndex = 0;
 	this->numControlCoords = 0;
-	this->numCurveCoords = 1000;
 	this->isDrawn = false;
 	this->objectName = (char*)"Bezier Curve";
 }
@@ -94,62 +93,16 @@ void Bezier::computeCurveCoords(float u)
 
 void Bezier::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
 {
-	pair<int, int> currCoords;
-	int x, y;
-	float u;
-	int blendingFunc;
-	
-//	startCoords.first = XCoord1;
-//	startCoords.second = YCoord1;
-//	endCoords.first = XCoord2;
-//	endCoords.second = YCoord2;
-	
-//	x = XCoord1;
-//	y = YCoord1;
-	
-	
-//	controlCoords.push_back(make_pair(startCoords.first, startCoords.second));
-//	numControlPoints++;
-//	controlCoords.push_back(make_pair(endCoords.first, endCoords.second));
-//	numControlPoints++;
-	
 	glColor3ubv(Color::BLACK);
-//	if(!numControlPoints)
-//	{
-//		glBegin(GL_LINES);
-//			glVertex2i(startCoords.first, startCoords.second);
-//			glVertex2i(endCoords.first, endCoords.second);
-//		glEnd();
-//		glFlush();
-//		return;
-//	}
-	
-//	glBegin(GL_POINTS);
-//	glVertex2i(x, y);
-	
-//	currCoords.first = x;
-//	currCoords.second = y;
-//	Coords.push_back(currCoords);
 	
 	computeCoeffs();
-	cout << "Going in for loop..." << endl;
-//	cout << "Curve Coords: " << numCurveCoords << endl;
+//	cout << "Going in for loop..." << endl;
 	for(float k = 0.0; k <= 1.0; k+=0.0001)
 	{
-//		u = (float)k / (float)numCurveCoords;
 		computeCurveCoords(k);
 	}
 	
-	cout << "Out of for loop..." << endl;
-	
-	
-	
-//	glEnd();
-//	glFlush();
-	
-//	printCoords();
-	
-//	if(viewport->ViewportPresent)	redrawAllObjects();
+//	cout << "Out of for loop..." << endl;
 }
 
 void Bezier::addControlCoords(pair<int, int> controlCoord)
@@ -162,24 +115,24 @@ void Bezier::addControlCoords(pair<int, int> controlCoord)
 		controlCoords.pop_back();
 		controlCoords.push_back(controlCoord);
 		controlCoords.push_back(tempCoord);
-		cout << "Front: (" << controlCoords.front().first << ", " << controlCoords.front().second << ")" << endl;
-		cout << "Back: (" << controlCoords.back().first << ", " << controlCoords.back().second << ")" << endl;
+//		cout << "Front: (" << controlCoords.front().first << ", " << controlCoords.front().second << ")" << endl;
+//		cout << "Back: (" << controlCoords.back().first << ", " << controlCoords.back().second << ")" << endl;
 	}
 	if(controlCoords.size() == 0)
 	{
 		startCoords = controlCoord;
 		controlCoords.push_back(startCoords);
-		cout << "Start: (" << startCoords.first << ", " << startCoords.second << ")" << endl;
+//		cout << "Start: (" << startCoords.first << ", " << startCoords.second << ")" << endl;
 		return;
 	}
 	if(controlCoords.size() == 1)
 	{
 		endCoords = controlCoord;
 		controlCoords.push_back(endCoords);
-		cout << "End: (" << endCoords.first << ", " << endCoords.second << ")" << endl;
+//		cout << "End: (" << endCoords.first << ", " << endCoords.second << ")" << endl;
 //		return;
 	}
-	printCoords();
+//	printCoords();
 	Coeffs.clear();
 	Coords.clear();
 	draw(this->startCoords.first, this->startCoords.second, this->endCoords.first, this->endCoords.second);
@@ -256,7 +209,7 @@ void Bezier::rotate(int rotAngleDeg, pair<int, int> pivot)
 	endCoords.first = pivot.first + round(((tempX - pivotX) * cosTheeta) - ((tempY - pivotY) * sinTheeta));
 	endCoords.second = pivot.second + round(((tempX - pivotX) * sinTheeta) + ((tempY - pivotY) * cosTheeta));
 	
-	// Scaling Control Coordinates
+	// Rotating Control Coordinates
 	for(list< pair<int, int> >::iterator it = controlCoords.begin(); it != controlCoords.end(); it++)
 	{
 		tempX = (*it).first;

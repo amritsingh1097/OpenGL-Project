@@ -398,23 +398,23 @@ void mouseEvent(int button, int state, int x, int y)
 			return;
 		}
 		
-		if(Choice == 8 && isObjectSelected && ((Bezier*)selectedObject)->isDrawn && ((Bezier*)selectedObject)->numControlCoords < 10)
+		if(Choice == 8 && isObjectSelected && ((Bezier*)selectedObject)->isDrawn)// && ((Bezier*)selectedObject)->numControlCoords < 10)
 		{
-			cout << "Adding Control Points..." << endl;
+//			cout << "Adding Control Points..." << endl;
 			((Bezier*)selectedObject)->addControlCoords(make_pair(x, y));
 //			((Bezier*)selectedObject)->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
 //			redraw();
-			cout << "Control Points Added..." << endl;
+//			cout << "Control Points Added..." << endl;
 			return;
 		}
 		
-		if(Choice == 9 && isObjectSelected && ((B_Spline*)selectedObject)->isDrawn && ((B_Spline*)selectedObject)->numKnotCoords < 10)
+		if(Choice == 9 && isObjectSelected && ((B_Spline*)selectedObject)->isDrawn)// && ((B_Spline*)selectedObject)->numControlCoords < 10)
 		{
-			cout << "Adding Control Coords..." << endl;
+//			cout << "Adding Control Coords..." << endl;
 			((B_Spline*)selectedObject)->addControlCoords(make_pair(x, y));
 //			((Bezier*)selectedObject)->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
 //			redraw();
-			cout << "Control Coords Added..." << endl;
+//			cout << "Control Coords Added..." << endl;
 			return;
 		}
 
@@ -847,7 +847,7 @@ void createMenu()
 	glutAddMenuEntry("5", ++lineThicknessEntryID);
 	glutAddMenuEntry("6", ++lineThicknessEntryID);
 	glutAddMenuEntry("7", ++lineThicknessEntryID);
-	
+
 //	menu2 = glutCreateMenu(mainMenu);
 //	glutAddSubMenu("Transformations", transformSubmenuID);
 ////	glutAddSubMenu("Filling", fillingSubmenuID);
