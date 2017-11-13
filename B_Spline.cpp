@@ -12,15 +12,16 @@ extern pair<int, int> selectedCoords;
 
 extern void redrawAllObjects();
 
-B_Spline::B_Spline(unsigned char* color, int thickness, string pattern)
+B_Spline::B_Spline(unsigned char* color, int thickness, string pattern, int curveDegree)
 {
 	this->shapeID = 6;
 	this->color = color;
 	this->thickness = thickness;
 	this->pattern = pattern;
 	this->patternIndex = 0;
-	this->numKnotCoords = 0;
+	this->curveDegree = curveDegree;
 	this->numCurveCoords = 1000;
+	this->numControlCoords = 0;
 	this->isDrawn = false;
 	this->objectName = (char*)"B_Spline Curve";
 }
@@ -39,34 +40,27 @@ int B_Spline::getShapeID()
 	return shapeID;
 }
 
-int B_Spline::computeBlendingFunc(float u, int k, int degree)
+float B_Spline::computeBlendingFunc(float u, int k, int degree)
 {
 	float blendingFunc;
-	int i;
-	list< pair<int, int> >::iterator it;
-	it = knotVector.begin();
-	
-	knotArrayX = new int[knotVector.size()];
-	knotArrayY = new int[knotVector.size()];
-	
-	i = 0;
-	for(it = knotVector.begin(); it != knotVector.end(); it++, i++)
+
+	if(degree == 1)
 	{
-		knotArrayX[i] = (*it).first;
-		knotArrayY[i] = (*it).second;
+		if(float(k) <= u && u <= float(k+1))
+		{
+			return 1;
+		}
+		else
+		{
+			return 0;
+		}
 	}
 	
-	if((knotArrayX[k] < u && u <= knotArrayX[k+1]) || (knotArrayX[k] < u && u <= knotArrayX[k+1]))
-	{
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
-	
-	blendingFunc = (((u - knotArrayX[k]) / (knotArrayX[k+degree-1] - knotArrayX[k])) * computeBlendingFunc(u, k, degree-1))
-				 + (((knotArrayX[k+degree] - u) / (knotArrayX[k+degree] - knotArrayX[k+1])) * computeBlendingFunc(u, k+1, degree-1));
+	cout << "K: " << k << "\tDegree: " << degree << endl;
+	cout << "First: " << (u - k) / (degree-1) << endl;
+	cout << "Second: " << (k+degree - u) / (degree - 1) << endl;
+	blendingFunc = ((u - k) / (degree-1) * computeBlendingFunc(u, k, degree-1))
+				 + ((k+degree - u) / (degree - 1) * computeBlendingFunc(u, k+1, degree-1));
 				 
 	cout << "Blending Function: " << blendingFunc << endl;
 	return blendingFunc;
@@ -76,27 +70,26 @@ void B_Spline::computeCurveCoords(float u)
 {
 	float blendingFunc;
 	int x, y;
-	list< pair<int, int> >::iterator knotCoordsIt;
-	knotCoordsIt = knotVector.begin();
+	list< pair<int, int> >::iterator controlCoordsIt = controlCoords.begin();
 	
-//	cout << "Calaulating Bezier Curve Points..." << endl;
+	cout << "Calaulating B-Spline Curve Points..." << endl;
 	x = y = 0;
-	for(int k=0; k < numKnotCoords; k++)
+	for(int k = 0; k < numControlCoords; k++)
 	{
-		blendingFunc = computeBlendingFunc(u, k, degree);
+		blendingFunc = round(computeBlendingFunc(u, k, curveDegree));
 //		cout << "Blending Function: " << blendingFunc << endl;
-		x += round((*knotCoordsIt).first * blendingFunc);
-		y += round((*knotCoordsIt).second * blendingFunc);
+		x += round((*controlCoordsIt).first * blendingFunc);
+		y += round((*controlCoordsIt).second * blendingFunc);
 //		cout << "X: " << x << "\tY: " << y << endl;
-		knotCoordsIt++;
+		controlCoordsIt++;
 	}
 	if(Coords.back().first != x && Coords.back().second != y)
 	{
-//		glBegin(GL_POINTS);
-//		glVertex2i(x, y);
-//		glEnd();
-//		glFlush();
-		cout << "X: " << x << "\tY: " << y << endl;
+		glBegin(GL_POINTS);
+		glVertex2i(x, y);
+		glEnd();
+		glFlush();
+		cout << endl << endl << "X: " << x << "\tY: " << y << endl;
 		Coords.push_back(make_pair(x, y));
 	}
 }
@@ -127,8 +120,8 @@ void B_Spline::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
 //	glFlush();
 
 	cout << "Going in for loop..." << endl;
-//	cout << "Curve Coords: " << numCurveCoords << endl;
-	for(float k = 0.0; k <= 1.0; k+=0.0001)
+	cout << "Degree: " << curveDegree-1 << endl;
+	for(float k = (float)curveDegree-1; k <= numControlCoords; k+=0.01)
 	{
 //		u = (float)k / (float)numCurveCoords;
 		computeCurveCoords(k);
@@ -141,31 +134,32 @@ void B_Spline::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
 //	if(viewport->ViewportPresent)	redrawAllObjects();
 }
 
-void B_Spline::addKnotCoords(pair<int, int> knotCoord)
+void B_Spline::addControlCoords(pair<int, int> controlCoord)
 {
-	numKnotCoords++;
-	degree = numKnotCoords - 1;
-	if(knotVector.size() >= 2)
+	numControlCoords++;
+	curveDegree = 2;
+//	degree = numControlCoords-1;
+	if(controlCoords.size() >= 2)
 	{
 		pair<int, int> tempCoord;
-		tempCoord = knotVector.back();
-		knotVector.pop_back();
-		knotVector.push_back(knotCoord);
-		knotVector.push_back(tempCoord);
-		cout << "Front: (" << knotVector.front().first << ", " << knotVector.front().second << ")" << endl;
-		cout << "Back: (" << knotVector.back().first << ", " << knotVector.back().second << ")" << endl;
+		tempCoord = controlCoords.back();
+		controlCoords.pop_back();
+		controlCoords.push_back(controlCoord);
+		controlCoords.push_back(tempCoord);
+		cout << "Front: (" << controlCoords.front().first << ", " << controlCoords.front().second << ")" << endl;
+		cout << "Back: (" << controlCoords.back().first << ", " << controlCoords.back().second << ")" << endl;
 	}
-	if(knotVector.size() == 0)
+	if(controlCoords.size() == 0)
 	{
-		startCoords = knotCoord;
-		knotVector.push_back(startCoords);
+		startCoords = controlCoord;
+		controlCoords.push_back(startCoords);
 		cout << "Start: (" << startCoords.first << ", " << startCoords.second << ")" << endl;
 		return;
 	}
-	if(knotVector.size() == 1)
+	if(controlCoords.size() == 1)
 	{
-		endCoords = knotCoord;
-		knotVector.push_back(endCoords);
+		endCoords = controlCoord;
+		controlCoords.push_back(endCoords);
 		cout << "End: (" << endCoords.first << ", " << endCoords.second << ")" << endl;
 //		return;
 	}
@@ -323,35 +317,23 @@ void B_Spline::erasePreviousObject()
 void B_Spline::redrawSelectedObject(unsigned char* color, int thickness)
 {
 	glColor3ubv(color);
-	glPointSize(thickness);
+//	glPointSize(thickness);
 	
-	bool clipped = false;
-	pair<int, int> start, end;
 	list< pair<int, int> >::iterator it;
 	it = Coords.begin();
-	
-	start = startCoords;
-	end = endCoords;
-	
-//	cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
-	if(viewport->ViewportPresent)
-	{
-		clipped = viewport->clipLine(&start, &end);
-//		cout << "Fully Clipped: " << !clipped << endl;
-		if(!clipped)	return;
-	
-//		cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
-		while(true)
+
+	// Redrawing Control Points -----------------------------
+	glPointSize(2);
+	glBegin(GL_POINTS);
+		for(list< pair<int, int> >::iterator it = controlCoords.begin(); it != controlCoords.end(); it++)
 		{
-			if((*it).first == start.first && (*it).second == start.second)	break;
-			if((*it).first - start.first >= -1 && (*it).first - start.first <= 1 && (*it).second - start.second >= -1 && (*it).second - start.second <= 1)	break;
-			it++;
+			glVertex2i((*it).first, (*it).second);
 		}
-		it++;
-	}
-	
-//	cout << "Starting From X: " << (*it).first << "\tY: " << (*it).second << endl;
-//	cout << "StartX: " << start.first << "\tStartY: " << start.second << "\tEndX: " << end.first << "\tEndY: " << end.second << endl;
+	glEnd();
+	glPointSize(thickness);
+
+	// Control Points Redrawn -------------------------------
+
 	
 	glBegin(GL_POINTS);
 		for(it; it != Coords.end(); it++)
@@ -362,10 +344,12 @@ void B_Spline::redrawSelectedObject(unsigned char* color, int thickness)
 			if(pattern[patternIndex] == '1')
 			{
 				glVertex2i((*it).first, (*it).second);
+				it++;
+				if(it == Coords.end())	break;
+				glVertex2i((*it).first, (*it).second);
+				it--;
 			}
 			patternIndex++;
-			if((*it).first == end.first && (*it).second == end.second)	break;
-			if((*it).first - end.first >= -1 && (*it).first - end.first <= 1 && (*it).second - end.second >= -1 && (*it).second - end.second <= 1)	break;
 		}
 	glEnd();
 	glFlush();

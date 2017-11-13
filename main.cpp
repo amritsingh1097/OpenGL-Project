@@ -32,6 +32,7 @@ int rotAngleDeg = 0;
 float scaleFactor = 1;
 
 int fillingAlgo = 0;
+int currCurveDegree = 0;
 
 int menu1 = -10, menu2 = -10;
 
@@ -283,7 +284,7 @@ void redraw()
 			case 9:
 			{
 				cout << endl << endl << "Drawing B-Spline Curve..." << endl;
-				B_Spline *curve = new B_Spline(currColor, currThickness, currPattern);
+				B_Spline *curve = new B_Spline(currColor, currThickness, currPattern, currCurveDegree);
 				glutSetWindowTitle(curve->objectName);
 //				curve->draw(XCoord1, YCoord1, XCoord2, YCoord2);
 				curve->isDrawn = true;
@@ -291,8 +292,8 @@ void redraw()
 //				if(viewport->ViewportPresent)	redrawAllObjects();
 				selectedObject = curve;
 				isObjectSelected = true;
-				curve->addKnotCoords(make_pair(XCoord1, YCoord1));
-				curve->addKnotCoords(make_pair(XCoord2, YCoord2));
+				curve->addControlCoords(make_pair(XCoord1, YCoord1));
+				curve->addControlCoords(make_pair(XCoord2, YCoord2));
 				cout << "B-Spline Curve Drawn." << endl;
 				break;
 			}
@@ -409,11 +410,11 @@ void mouseEvent(int button, int state, int x, int y)
 		
 		if(Choice == 9 && isObjectSelected && ((B_Spline*)selectedObject)->isDrawn && ((B_Spline*)selectedObject)->numKnotCoords < 10)
 		{
-			cout << "Adding Knot Coords..." << endl;
-			((B_Spline*)selectedObject)->addKnotCoords(make_pair(x, y));
+			cout << "Adding Control Coords..." << endl;
+			((B_Spline*)selectedObject)->addControlCoords(make_pair(x, y));
 //			((Bezier*)selectedObject)->redrawSelectedObject(selectedObject->color, selectedObject->thickness);
 //			redraw();
-			cout << "Knot Coords Added..." << endl;
+			cout << "Control Coords Added..." << endl;
 			return;
 		}
 
@@ -748,6 +749,12 @@ void mainMenu(int id)
 	cout << "ID: " << id << endl;
 }
 
+void bsplineSubmenu(int id)
+{
+	currCurveDegree = id;
+	Choice = 9;
+}
+
 void fillingSubmenu(int id)
 {
 	if(!isObjectSelected)	return;
@@ -757,12 +764,17 @@ void fillingSubmenu(int id)
 
 void createMenu()
 {
-	int viewportSubmenuID = -10, shapeSubmenuID = -10, transformSubmenuID = -10, rotationSubmenuID = -10,
-		scaleSubmenuID = -10, fillingSubmenuID = -10, lineColorSubmenuID = -10, fillColorSubmenuID = -10, thicknessSubmenuID = -10;
+	int viewportSubmenuID = -10, shapeSubmenuID = -10, transformSubmenuID = -10, rotationSubmenuID = -10, scaleSubmenuID = -10,
+		fillingSubmenuID = -10, lineColorSubmenuID = -10, fillColorSubmenuID = -10, thicknessSubmenuID = -10, bsplineSubmenuID = -10;
 	int shapeEntryID = 0, lineColorEntryID = 10, lineThicknessEntryID = 20, rotationEntryID = 30, scaleEntryID = 40, fillColorEntryID = 50, fillingEntryID = 0;//, XYColorEntryID = 30, fillingEntryID = 40;
 
 //	viewportSubmenuID = glutCreateMenu(NULL);
 //	glutAddMenuEntry("Liang Barsky", );
+
+	bsplineSubmenuID = glutCreateMenu(bsplineSubmenu);
+	glutAddMenuEntry("Degree 2", 2);
+	glutAddMenuEntry("Degree 3", 3);
+	glutAddMenuEntry("Degree 4", 4);
 
 	shapeSubmenuID = glutCreateMenu(mainMenu);
 	glutAddMenuEntry("Point", ++shapeEntryID);
@@ -773,7 +785,7 @@ void createMenu()
 	glutAddMenuEntry("Circle", ++shapeEntryID);
 	glutAddMenuEntry("Ellipse", ++shapeEntryID);
 	glutAddMenuEntry("Bezier Curve", ++shapeEntryID);
-	glutAddMenuEntry("B-Spline Curve", ++shapeEntryID);
+	glutAddSubMenu("B-Spline Curve", bsplineSubmenuID);
 //	glutAddMenuEntry("Polygon", ++shapeEntryID);
 
 	rotationSubmenuID = glutCreateMenu(rotAngleMenu);

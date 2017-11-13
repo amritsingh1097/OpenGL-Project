@@ -9,21 +9,21 @@ using namespace std;
 class B_Spline : public Object
 {
 	int shapeID;
+	int curveDegree;
 	void computeCurveCoords(float u);
-	int computeBlendingFunc(float u, int k, int degree);
+	float computeBlendingFunc(float u, int k, int degree);
 	public:
 		pair<int, int> startCoords, endCoords;
-		list< pair<int, int> > knotVector;
-		int *knotArrayX, *knotArrayY;
-		int degree;
-		int numCurveCoords;
+		list< pair<int, int> > controlCoords;
 		int numKnotCoords;
+		int numCurveCoords;
+		int numControlCoords;
 		bool isDrawn;
-		B_Spline(unsigned char* color, int thickness, string pattern);
+		B_Spline(unsigned char* color, int thickness, string pattern, int curveDegree);
 		void printCoords();
 		int getShapeID();
 		void draw(int X1, int Y1, int X2, int Y2);
-		void addKnotCoords(pair<int, int> controlCoord);
+		void addControlCoords(pair<int, int> controlCoord);
 		void translate(int dx, int dy);
 		void rotate(int rotAngle, pair<int, int> pivot);
 		void scale(float scaleFactor, pair<int, int> pivot);
