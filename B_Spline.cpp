@@ -62,7 +62,7 @@ float B_Spline::computeBlendingFunc(float u, int k, int degree)
 	return blendingFunc;
 }
 
-void B_Spline::computeCurveCoords(float u)
+inline void B_Spline::computeCurveCoords(float u)
 {
 	float blendingFunc;
 	int x, y;
@@ -88,22 +88,6 @@ void B_Spline::computeCurveCoords(float u)
 //		cout << endl << endl << "X: " << x << "\tY: " << y << endl;
 //		getch();
 		Coords.push_back(make_pair(x, y));
-	}
-}
-
-
-float B_Spline :: calculateCoefficient(float u,int k,int degree)
-{
-	if(degree == 1)
-	{
-		if(u >= float(k) && u <= float((k+1)))
-			return 1;
-		else
-			return 0;
-	}
-	else
-	{
-		return((u-k)/(degree-1)*calculateCoefficient(u,k,degree-1) + (k+degree - u)/(degree-1)*calculateCoefficient(u,k+1,degree-1));
 	}
 }
 
@@ -338,8 +322,22 @@ void B_Spline::redrawSelectedObject(unsigned char* color, int thickness)
 
 	// Control Points Redrawn -------------------------------
 
+	if(Coords.size() >= 2)
+	{
+		glBegin(GL_LINES);
+			glVertex2i(Coords.front().first, Coords.front().second);
+			glVertex2i(startCoords.first, startCoords.second);
+
+			glVertex2i(Coords.back().first, Coords.back().second);
+			glVertex2i(endCoords.first, endCoords.second);
+		glEnd();
+		glFlush();
+	}
 	
 	glBegin(GL_LINES);
+
+
+
 		for(it; it != Coords.end(); it++)
 		{
 //			cout << "Points X: " << (*it).first << "\tY: " << (*it).second << endl;
@@ -355,6 +353,7 @@ void B_Spline::redrawSelectedObject(unsigned char* color, int thickness)
 			}
 			patternIndex++;
 		}
+		
 	glEnd();
 	glFlush();
 }
