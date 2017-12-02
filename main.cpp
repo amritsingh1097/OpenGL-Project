@@ -12,6 +12,7 @@
 #include "ellipse.h"
 #include "bezier.h"
 #include "b_spline.h"
+#include "concentricellipses.h"
 #include "viewport.h"
 using namespace std;
 
@@ -295,6 +296,17 @@ void redraw()
 				curve->addControlCoords(make_pair(XCoord1, YCoord1));
 				curve->addControlCoords(make_pair(XCoord2, YCoord2));
 				cout << "B-Spline Curve Drawn." << endl;
+				break;
+			}
+			case 10:
+			{
+				cout << endl << endl << "Drawing Test Shape..." << endl;
+				ConcentricEllipses *ellipses = new ConcentricEllipses(currColor, currThickness, currPattern);
+				glutSetWindowTitle(ellipses->objectName);
+				ellipses->draw(XCoord1, YCoord1, XCoord2, YCoord2);
+				objectList.push_back(ellipses);
+//				if(viewport->ViewportPresent)	redrawAllObjects();
+				cout << "Test Shape Drawn." << endl;
 				break;
 			}
 //			case 9:
@@ -786,6 +798,8 @@ void createMenu()
 	glutAddMenuEntry("Ellipse", ++shapeEntryID);
 	glutAddMenuEntry("Bezier Curve", ++shapeEntryID);
 	glutAddSubMenu("B-Spline Curve", bsplineSubmenuID);
+	++shapeEntryID;
+	glutAddMenuEntry("Concentric Ellipses", ++shapeEntryID);
 //	glutAddMenuEntry("Polygon", ++shapeEntryID);
 
 	rotationSubmenuID = glutCreateMenu(rotAngleMenu);

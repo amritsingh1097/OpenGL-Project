@@ -42,10 +42,13 @@ void MidPoint_Ellipse::draw(int XCoord1, int YCoord1, int XCoord2, int YCoord2)
 	centerX = XCoord1;
 	centerY = YCoord1;
 	
+	endX = XCoord2;
+	endY = YCoord2;
+	
 	radiusX = abs(XCoord2 - XCoord1);
 	radiusY = abs(YCoord2 - YCoord1);
 	
-	glColor3ubv(Color::BLACK);
+	glColor3ubv(color);
 	glBegin(GL_POINTS);
 	
 	if(radiusX < radiusY)
@@ -608,7 +611,7 @@ void MidPoint_Ellipse::fourFillBoundary(int x, int y, unsigned char* fillColor, 
 		glBegin(GL_POINTS);
 			glVertex2i(x - ScreenSizeX/2, ScreenSizeY/2 - y);
 		glEnd();
-//		glFlush();
+		glFlush();
 
 		isFilled = true;
 		filledCoords.push_back(make_pair(x - ScreenSizeX/2, ScreenSizeY/2 - y));

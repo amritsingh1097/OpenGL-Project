@@ -8,6 +8,7 @@ using namespace std;
 class Object
 {
 	public:
+		int shapeID;
 		char* objectName;
 		list< pair<int, int> > Coords;
 		unsigned char *color;
@@ -30,7 +31,6 @@ class Object
 		virtual void setColor(unsigned char* color) = 0;
 		virtual void erasePreviousObject() = 0;
 		virtual void redrawSelectedObject(unsigned char* color, int thickness) = 0;
-//		virtual void fillBoundary(pair<int, int> seed, unsigned char* fillColor, unsigned char* selectedObjectColor) {}
 		virtual void setFillColor(unsigned char *fillColor) {}
 		virtual void fourFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor) {}
 		virtual void eightFillBoundary(int x, int y, unsigned char* fillColor, unsigned char* selectedObjectColor) {}

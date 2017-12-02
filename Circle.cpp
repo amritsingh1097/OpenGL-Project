@@ -1,4 +1,3 @@
-#include <bits/stdc++.h>
 #include <math.h>
 #include "circle.h"
 #include "color.h"
@@ -256,7 +255,6 @@ void MidPoint_Circle::rotate(int rotAngleDeg, pair<int, int> pivot)
 	float sinTheeta;
 	float cosTheeta;
 	float rotAngleRad = (float)rotAngleDeg * (PI / (float)180);
-//	int tempSin, tempCos;
 	float tempX, tempY;
 	float pivotX, pivotY;
 	
@@ -265,7 +263,6 @@ void MidPoint_Circle::rotate(int rotAngleDeg, pair<int, int> pivot)
 	
 	sinTheeta = sin(rotAngleRad);
 	cosTheeta = cos(rotAngleRad);
-//	redrawSelectedObject(color, thickness);
 	
 	tempX = centerX;
 	tempY = centerY;

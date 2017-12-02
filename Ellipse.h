@@ -10,6 +10,7 @@ class MidPoint_Ellipse : public Object
 {
 	int shapeID;
 	public:
+		int endX, endY;
 		int centerX, centerY, radiusX, radiusY;
 		list< pair<int, int> > filledCoords;
 		MidPoint_Ellipse(unsigned char* color, int thickness, string pattern);
